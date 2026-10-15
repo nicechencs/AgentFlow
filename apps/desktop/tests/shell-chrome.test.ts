@@ -115,7 +115,7 @@ describe("desktop shell chrome", () => {
       ),
     );
 
-    expect(document.querySelector(".wf-brand-label")?.textContent).toBe("Workforce");
+    expect(document.querySelector(".wf-brand-label")?.textContent).toBe("AgentFlow");
     expect(document.querySelector('[aria-label="收起侧栏"]')).not.toBeNull();
     expect(document.querySelector("h1.wf-topbar-page")?.textContent).toBe("项目详情");
     expect(document.querySelector(".wf-topbar-subtitle")?.textContent).toBe("围绕一个 Project");

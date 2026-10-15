@@ -1,12 +1,12 @@
 ---
-title: Workforce 文档索引
+title: AgentFlow 文档索引
 type: navigation
 status: current
 owner: maintainers
-updated: 2026-09-13
+updated: 2026-10-14
 ---
 
-# Workforce Documentation
+# AgentFlow Documentation
 
 ## Directory plan
 

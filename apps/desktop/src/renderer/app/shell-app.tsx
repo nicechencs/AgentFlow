@@ -66,7 +66,7 @@ export function ShellApp(props: { registry: RouteRegistry }): ReactNode {
   const view = renderShell({
     connection,
     currentPath: navPath,
-    title: resolved?.route.title ?? "Workforce",
+    title: resolved?.route.title ?? "AgentFlow",
   });
   const feature = resolved ? registry.getFeatureModule(resolved.route.slot) : undefined;
   const Page = feature?.Page;

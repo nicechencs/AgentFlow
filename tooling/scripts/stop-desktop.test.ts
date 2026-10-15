@@ -113,18 +113,18 @@ describe("stop-desktop selection", () => {
 describe("stop-desktop dev server fingerprint", () => {
   it("reads the title and entry script from the renderer index.html", () => {
     const fingerprint = rendererFingerprint(
-      '<html><head><title>Workforce</title></head><body><script type="module" src="/src/renderer/main.tsx"></script></body></html>',
+      '<html><head><title>AgentFlow</title></head><body><script type="module" src="/src/renderer/main.tsx"></script></body></html>',
     );
-    expect(fingerprint).toEqual({ title: "Workforce", entry: "/src/renderer/main.tsx" });
+    expect(fingerprint).toEqual({ title: "AgentFlow", entry: "/src/renderer/main.tsx" });
   });
 
   it("rejects another application's index.html even though Vite answers 200 for any path", () => {
     const ours = rendererFingerprint(
-      '<title>Workforce</title><script src="/src/renderer/main.tsx"></script>',
+      '<title>AgentFlow</title><script src="/src/renderer/main.tsx"></script>',
     );
     expect(bodyMatchesFingerprint("<title>AgentHub</title>", ours)).toBe(false);
     expect(
-      bodyMatchesFingerprint('<title>Workforce</title><script src="/src/renderer/main.tsx">', ours),
+      bodyMatchesFingerprint('<title>AgentFlow</title><script src="/src/renderer/main.tsx">', ours),
     ).toBe(true);
   });
 });

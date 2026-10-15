@@ -9,7 +9,7 @@ export const desktopRoot = path.join(repoRoot, "apps", "desktop");
 export const daemonRoot = path.join(repoRoot, "apps", "daemon");
 export const defaultOutDir = path.join(repoRoot, "out", "pack");
 
-export const productName = "Workforce";
+export const productName = "AgentFlow";
 export const appId = "com.workforce.desktop";
 export const upgradeActiveRunPolicy = "reject";
 
@@ -54,10 +54,10 @@ export function electronDownloadUrl(version, platform, arch) {
 
 export function executableName(platform) {
   if (platform === "win32") {
-    return "Workforce.exe";
+    return "AgentFlow.exe";
   }
   if (platform === "darwin") {
-    return "Workforce";
+    return "AgentFlow";
   }
   return "workforce";
 }

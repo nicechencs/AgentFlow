@@ -3,7 +3,7 @@ title: 产品沟通历史
 type: decision
 status: current
 owner: maintainers
-updated: 2026-09-13
+updated: 2026-10-14
 ---
 
 # 产品沟通历史
@@ -36,6 +36,12 @@ updated: 2026-09-13
 同一自然日可有多条；后写的条目不得假装改写先写的决定，只能追加澄清。
 
 ---
+
+## 2026-10-14（Asia/Taipei）产品名改为 AgentFlow
+
+- **决定：** 产品对外名称从 Workforce 改为 AgentFlow，GitHub 仓库为 https://github.com/nicechencs/AgentFlow。本次只改用户可见显示名、启动提示、文档入口标题和安装包 productName。不改 `@workforce/*` 包名、协议 URN、类型名、CSS `--wf-` / `wf-` 前缀，也不改已有用户数据目录（`%APPDATA%\Workforce`、macOS Application Support/Workforce、Linux XDG `workforce`），避免已安装实例找不到状态。
+- **文档影响：** README、AGENTS.md、文档索引、STYLE 标题；本页追加本条。源码包名与数据目录未改。
+- **状态：** 显示名 **implemented**（本地文案）。包名与用户数据目录迁移仍 **planned**（未做，需单独决定）。
 
 ## 2026-09-13（Asia/Taipei）Chat「去做」冻成 start_direct，落到已有 Task Run HTTP
 

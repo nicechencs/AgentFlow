@@ -9,11 +9,11 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo Stopping any leftover Workforce dev processes...
+echo Stopping any leftover AgentFlow dev processes...
 node tooling\scripts\stop-desktop.mjs
 if errorlevel 1 (
   echo.
-  echo Some Workforce processes could not be stopped. Close them manually and retry.
+  echo Some AgentFlow processes could not be stopped. Close them manually and retry.
   pause
   exit /b 1
 )
@@ -21,7 +21,7 @@ if errorlevel 1 (
 node tooling\scripts\start-desktop.mjs %*
 if errorlevel 1 (
   echo.
-  echo Workforce failed to start.
+  echo AgentFlow failed to start.
   pause
   exit /b 1
 )

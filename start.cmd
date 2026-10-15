@@ -12,7 +12,7 @@ if errorlevel 1 (
 node tooling\scripts\start-desktop.mjs %*
 if errorlevel 1 (
   echo.
-  echo Workforce failed to start.
+  echo AgentFlow failed to start.
   pause
   exit /b 1
 )

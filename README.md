@@ -1,6 +1,6 @@
-# Workforce
+# AgentFlow
 
-Workforce is a local-first AI workforce orchestration platform for coordinating specialized AI workers, runtimes, workflows, tasks, approvals, evaluations, and traceable artifacts.
+AgentFlow is a local-first AI workforce orchestration platform for coordinating specialized AI workers, runtimes, workflows, tasks, approvals, evaluations, and traceable artifacts.
 
 The V0.1 architecture is frozen. This repository is a TypeScript pnpm + Turborepo monorepo; package implementations are owned by the task cards in `docs/planning/02-development-task-backlog.md`.
 

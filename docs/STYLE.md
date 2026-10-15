@@ -1,9 +1,9 @@
 ---
-title: Workforce 文档风格与治理
+title: AgentFlow 文档风格与治理
 type: governance
 status: current
 owner: maintainers
-updated: 2026-09-11
+updated: 2026-10-14
 ---
 
 # 文档风格与治理

@@ -1,5 +1,5 @@
 appId: com.workforce.desktop
-productName: Workforce
+productName: AgentFlow
 # Declarative pack config for electron-builder once T01 adds it.
 # tooling/release/pack.mjs is the lockfile-free packer and does not invoke this file.
 # start.cmd and pnpm --filter @workforce/desktop dev are not installers.

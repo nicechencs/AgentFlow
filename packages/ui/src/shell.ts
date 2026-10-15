@@ -23,7 +23,7 @@ export function buildShellView(input: {
 }): ShellView {
   const mainEnabled = connectionAllowsNavigation(input.connection);
   return {
-    title: input.title ?? "Workforce",
+    title: input.title ?? "AgentFlow",
     connection: input.connection,
     nav: primaryNavItems().map((item) => ({
       ...item,

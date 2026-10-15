@@ -98,7 +98,7 @@ function ShellFrameLayout(
                 onClick={onToggleCollapsed}
               >
                 <span className="wf-brand-mark" aria-hidden="true">
-                  W
+                  A
                 </span>
                 <span className="wf-nav-expand-icon" aria-hidden="true">
                   <IconPanelOpen size={16} />
@@ -108,9 +108,9 @@ function ShellFrameLayout(
               <>
                 <span className="wf-brand">
                   <span className="wf-brand-mark" aria-hidden="true">
-                    W
+                    A
                   </span>
-                  <span className="wf-brand-label">Workforce</span>
+                  <span className="wf-brand-label">AgentFlow</span>
                 </span>
                 <Button
                   variant="ghost"
@@ -228,7 +228,7 @@ function ShellFrameLayout(
             {connectionLabel(view.connection.status)}
           </StatusText>
         )}
-        <span className="wf-push">Workforce · 本机 Daemon</span>
+        <span className="wf-push">AgentFlow · 本机 Daemon</span>
       </footer>
     </div>
   );
