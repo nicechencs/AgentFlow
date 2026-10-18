@@ -1,9 +1,9 @@
 ---
-title: Workforce V0.1 Decision Register
+title: AgentFlow V0.1 Decision Register
 type: decision
 status: current
 owner: maintainers
-updated: 2026-09-13
+updated: 2026-10-19
 ---
 
 # V0.1 决策登记
@@ -39,6 +39,7 @@ updated: 2026-09-13
 | Marketplace | **现在不是一等面，未来要做**；装进来仍进自己的库再 Team 绑 Project。不要写成永久禁止 | T00；契约扩展归 T02 |
 | 工作流作者路径 | 对话生成草稿（D17）后必须可在画布/结构化面编辑（D15）；未发布不得执行 | T18、T20、T02 |
 | Agent 执行模式 | 绑定已发布工作流，或直接执行；两者皆一等、靠 probe 诚实显隐（D18） | T21、T09、T10 |
+| 默认执行器 | **目标：Claude Code**（用户 2026-10-19 决定）；**现状：未接入，代码默认 Codex**（见 [D20](#d20--工作流默认执行器claude-code目标)） | T15、T10、T21 |
 | 执行 Placement | 种类：`local`（本机，**默认**）\| `remote` \| `container`。调度意图仍为 `automatic \| local_only \| remote_only \| specific_node`，系统默认 `local_only`。V0.1 只实现 Local Node + worktree；远程=契约/Mock，容器=planned，均非 later nicety（D07 / D19） | T02、T05、T09、T10、T13 |
 | 初始交付结果 | 固定基线 SHA 的整合 patch/分支 + 报告；合回用户目标分支是显式动作 | T06、T08、T14、T16 |
 | Planner 流程 | 先配置再规划；Planner 是普通受控 Task/Run；确认 Plan 版本后才发布冻结执行 DAG | T02、T09、T12、T14 |
@@ -569,6 +570,13 @@ Authoring 契约：对话 turn/raw intent 先由 Application 创建受治理 aut
 - 不建设远程节点控制面，不发明 enrollment / heartbeat / 服务器 lease 的新公开 API。
 - 不实现 Docker / Kubernetes runner。
 - 不得把尚未出现在当前源码与测试中的 protocol 字段写成已实现。T02 若要把 `placementKind` 落进 schema，走兼容流程；本条只冻结产品语义。
+
+### D20 — 工作流默认执行器：Claude Code（目标）
+
+- **决定（2026-10-19，用户决定）：** 工作流默认使用 **Claude Code** 执行。
+- **现状（以源码为准，2026-10-19 核对 `232797d`）：** Claude Code **尚未接入**。`runtimes/` 下只有 `codex` 与 `mock`；生产 Daemon 的 Host 默认适配器是 Codex（`apps/daemon/src/composition/app-services.ts:324`），预设 Team 运行时也是 Codex（`apps/desktop/src/renderer/features/teams/model.ts:15`）。Mock 只在测试里显式传 `completeAfterMs` 时使用，没有它不会静默回退 Mock。
+- **落地条件：** 先新增 Claude Code 适配器并通过 Runtime 契约测试和 capability probe（D18：不支持则诚实禁用），再把 Host 默认适配器与预设 Team 运行时改为 Claude Code。在此之前不得把 Claude Code 写成已可用或已是默认。
+- **兼容：** Codex 继续保留为可选执行器；`RuntimeProfile` 里 `adapterType` 已含 `claude_code`（见蓝图领域模型），无需改协议名。
 
 ## 11. 交接
 

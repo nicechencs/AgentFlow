@@ -1,9 +1,9 @@
 ---
-title: Workforce V0.1 API and Capability Matrix
+title: AgentFlow V0.1 API and Capability Matrix
 type: reference
 status: current
 owner: maintainers
-updated: 2026-09-13
+updated: 2026-10-19
 ---
 
 # V0.1 页面与 API 能力矩阵
@@ -15,6 +15,7 @@ updated: 2026-09-13
 修订：2026-09-13 — WV-T02-DIRECT-INTENT：ChatIntent expand `start_direct`（必带 `projectId`，可选 `taskId` / `title`）。「去做」落到已冻 `POST /tasks/{id}/runs`（`orchestrationMode: "direct"`，body 即已有 `startDirectTaskRunInput` / `startTaskRunInput`）。无 `taskId` 时只 expand `POST /projects/{id}/tasks`（仅 ad-hoc，body 不得带 `workflowInstanceId`）。`need_context.missing` 可含 `taskId`。IM 仍 `unsupported` / `im`。**禁止** `/runs/{id}:direct`、`/projects/{id}:direct`。`StartRunRequest` 不加 `orchestrationMode`。  
 修订：2026-09-13 — WV-T00-ALIGN：按 `d376ba2` 只改正事实句，**不**发明 path。库 / Chat HTTP **已接线**（不再写 planned / Daemon 未实现）。AuthoringSession allowlist **已放行**。`POST /tasks/{id}/runs` **有路由**，allowlist 仍 `blockedUntil: "T10-TASK-RUN-HTTP"`；`orchestration.direct` 为 false；Chat「去做」仍 `unsupported_capability`。不发明 `:direct`。Marketplace 不是当前债。
 
+修订：2026-10-19 — 对照 `232797d` 校正：① `PATCH /projects/{id}` 现可改 `name` / `objective` / `teamVersionId` / `workflowVersionId`（`apps/daemon/src/api/routes.ts:281`），`workflowVersionId` 必须是已发布版本（`app-services.ts:978-980`），`ProjectDto.workflowVersionId` 可选返回；确认计划时优先使用绑定的已发布图。② 默认执行器：目标 Claude Code（[D20](decision-register.md#d20--工作流默认执行器claude-code目标)，用户 2026-10-19 决定），**现状未接入**，`GET /runtimes` 只会列出 Mock 与 Codex，Host 默认 Codex。③ Task patch 解析器已接（`app-services.ts:2197`）。④ 产品显示名已是 AgentFlow，`@workforce/*` 包名与数据目录仍是 Workforce（故意保留）。
 修订：2026-09-13 — WV-T02-CARD-INTENT：冻结角色卡片 `who` / `how` / `skills`；ChatIntent expand `update_worker` / `invite_team`；认不出 → `need_clarification`，禁止默成 `discuss_work`。空闲写卡复用 `PATCH /workers/{id}/drafts/{draftId}` 与 `:fork`。**不**发明 `/workers/{id}/remarks`、`/chat/inbox`、`/workers/{id}/messages`、Marketplace path。Runtime/Policy **不是**卡片必填。  
 修订：2026-09-13 — WV-T02-CONTRACT：冻结 WorkerVersion / 角色库 / `TeamMember.workerVersionId` / ChatIntent 公开契约。下列库与 Chat path **planned**，Daemon 未实现。**不**发明 `/workers/{id}/messages`、`/chat/inbox`、`:direct`。Marketplace DTO 不进本矩阵。  
 修订：2026-09-12 — T00-DOC-ALIGN：对照 `dev` tip 源码。`CHAT_SESSION_PROTOCOL_FROZEN=true`；Daemon AuthoringSession HTTP 与 typed send 已接线；Electron allowlist **仍缺**该 path。`RunDto`/`ProjectDto` 在 `packages/protocol`。受管 Run 启动现构造 `RunExecutionSnapshot`。**不**发明泛用 Chat API 或 `:direct` path。**不**宣称 M7/M8 完成或 T20 headed PASS。
@@ -113,7 +114,7 @@ M8 必达——双执行模式（**完成态未实现**；本分支有 start 回
 | POST | `/projects` | 必须 | 创建 |
 | GET | `/projects` | 必须 | 列表、工作台 |
 | GET | `/projects/{id}` | 必须 | 详情 |
-| PATCH | `/projects/{id}` | 必须 | 详情编辑（draft/planning 名称目标） |
+| PATCH | `/projects/{id}` | 必须 | 详情编辑（名称、目标、`teamVersionId`、`workflowVersionId`；后者须为已发布版本，2026-09-15 起） |
 | POST | `/projects/{id}:start-planning` | 必须 | 配置齐后进入 planning |
 | POST | `/projects/{id}:confirm-plan` | 必须 | 确认 Plan 版本 |
 | POST | `/projects/{id}:start` | 必须 | 启动执行 DAG |
@@ -181,7 +182,7 @@ M8 必达——双执行模式（**完成态未实现**；本分支有 start 回
 | POST | `/workspaces/{id}:validate` | 必须 | — |
 | POST | `/workspaces/{id}:provision` | 必须 | Mock 可用临时目录 |
 | GET | `/workspaces/{id}/changes` | 必须 | 受控 diff |
-| GET | `/runtimes` | 必须 | Mock + 已探测 Codex |
+| GET | `/runtimes` | 必须 | Mock + 已探测 Codex（Claude Code 目标默认、未接入，见 D20） |
 | GET | `/runtimes/{id}` | 必须 | — |
 | GET | `/runtimes/{id}/capabilities` | 必须 | probe 结果 |
 | POST | `/runtimes/{id}:validate` | 必须 | — |

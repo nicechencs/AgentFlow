@@ -3,7 +3,7 @@ title: 产品沟通历史
 type: decision
 status: current
 owner: maintainers
-updated: 2026-10-14
+updated: 2026-10-19
 ---
 
 # 产品沟通历史
@@ -575,3 +575,9 @@ updated: 2026-10-14
 - **决定：** 画布与 Team 写页去掉第二套 inline 皮肤，改组合 T11 共享组件；`features/projects/ui.ts` 不得再持有独立 hex / `--wf-color-*`，只作为作者壳与 orchestration 对 `--wf-*` 的兼容再导出。按需补 Dialog / Dropdown / Tooltip / Toast / Table / Skeleton，不在 features 内新增全局 CSS 变量。作者壳与 orchestration 页面文件本轮不改（T20/T21 稍后）。
 - **文档影响：** [UI 设计系统](../product-ui/04-design-system.md) §3/§7 登记复合组件；[实现进度](03-implementation-status.md) 的 T11 行、§3 第 7 条与 §5 第 4 条同步为画布/Team 已组合、第二套色值已删除。
 - **状态：** **implemented**（共享层复合组件 + 画布/Team 组合 + ui.ts 再导出）。未跑 Vitest / headed；未改 `workflow-authoring`、`orchestration`、`apps/desktop/src/main`、protocol、Daemon 或测试文件。
+
+## 2026-10-19（Asia/Taipei）工作流默认使用 Claude Code；文档对齐 `232797d`
+
+- **决定：** 用户决定工作流默认使用 Claude Code 执行（登记为 [D20](decision-register.md#d20--工作流默认执行器claude-code目标)）。核对源码后确认 Claude Code 适配器尚未存在，代码默认是 Codex，所以只登记目标与落地条件，不改代码、不把它写成已实现。
+- **文档影响：** [实现进度](03-implementation-status.md) 新增 2026-10-19 修订（默认执行器校正、Task patch 解析器已接、9-15「绑定已发布工作流版本到项目」补记、改名说明、已知测试缺口）；[决策登记](decision-register.md) 新增 D20 与总表行；[能力矩阵](api-capability-matrix.md) 补 `PATCH /projects/{id}` 的 `workflowVersionId` 与默认执行器说明。改名 AgentFlow 只改显示名，`@workforce/*` 包名与数据目录保持，迁移另做。
+- **状态：** 默认 Claude Code 为 **planned**（未接入）；其余校正为 **implemented**（以源码行号为证）。
