@@ -68,6 +68,7 @@ import { interpretMockAuthoringIntent } from "@workforce/runtime-mock";
 import { WorkspaceError } from "@workforce/workspace";
 import { InvalidTransitionError, validateWorkflowGraph } from "@workforce/workflow-engine";
 import { RuntimeSdkError } from "@workforce/runtime-sdk";
+import { CLAUDE_CODE_ADAPTER_ID } from "@workforce/runtime-claude-code";
 import { CODEX_ADAPTER_ID } from "@workforce/runtime-codex";
 
 import { loadOrCreateClientId, loadOrCreatePrincipalId } from "../bootstrap/state-file.js";
@@ -144,7 +145,11 @@ import {
   CODEX_RUNTIME,
   CODEX_RUNTIME_CAPABILITIES,
   CODEX_RUNTIME_ID,
-  CODEX_RUNTIME_INSTALLATION_ID,
+  CLAUDE_CODE_RUNTIME,
+  CLAUDE_CODE_RUNTIME_CAPABILITIES,
+  CLAUDE_CODE_RUNTIME_ID,
+  CLAUDE_CODE_RUNTIME_INSTALLATION_ID,
+  DEFAULT_LIVE_RUNTIME_ID,
   ORGANIZATION_ID,
   PROTOCOL_VERSION,
   SOFTWARE_TEAM_VERSION,
@@ -154,13 +159,24 @@ import {
   seedPresetWorkerLibrary,
   unknownProjectBudget,
 } from "./catalog.js";
-import { captureLivePatch, captureMockPatch, gitDiffArtifactFromCapture, isGitDiffSlot } from "./delivery-bind.js";
+import {
+  captureLivePatch,
+  captureMockPatch,
+  gitDiffArtifactFromCapture,
+  isGitDiffSlot,
+} from "./delivery-bind.js";
 import { createEnginePort } from "./engine.js";
 import {
   createComposedCodexRuntime,
   describeCodexHostBlocker,
   resolveComposedCodexStart,
 } from "./codex.js";
+import {
+  createComposedClaudeCodeRuntime,
+  describeClaudeCodeHostBlocker,
+  resolveComposedClaudeCodeStart,
+} from "./claude-code.js";
+import { RoutingRuntimeAdapter } from "./runtime-router.js";
 import {
   ComposedMockHost,
   type RunAuthoringProposalEvent,
@@ -321,22 +337,39 @@ export class ComposedAppServices implements AppServices {
         ? new ComposedMockHost({
             store: hostStore,
             nodeId: LOCAL_NODE_ID,
-            defaultAdapterId: CODEX_ADAPTER_ID,
-            defaultSnapshotRef: "codex:exec",
-            adapter: createComposedCodexRuntime({
-              resolveStart: (request) => {
-                const task = composed.services?.app.world.tasks.get(request.taskId);
-                const project = task
-                  ? composed.services?.app.world.projects.get(task.projectId)
-                  : undefined;
-                return resolveComposedCodexStart({
-                  request,
-                  worktrees,
-                  ...(task ? { task } : {}),
-                  ...(project?.objective ? { objective: project.objective } : {}),
-                });
-              },
-            }),
+            defaultAdapterId: DEFAULT_LIVE_RUNTIME_ID,
+            adapterIds: [CLAUDE_CODE_ADAPTER_ID, CODEX_ADAPTER_ID],
+            defaultSnapshotRef: "exec",
+            adapter: new RoutingRuntimeAdapter([
+              [
+                CLAUDE_CODE_ADAPTER_ID,
+                createComposedClaudeCodeRuntime({
+                  resolveStart: (request) => {
+                    const { task, project } = lookupStartScope(composed, request.taskId);
+                    return resolveComposedClaudeCodeStart({
+                      request,
+                      worktrees,
+                      ...(task ? { task } : {}),
+                      ...(project?.objective ? { objective: project.objective } : {}),
+                    });
+                  },
+                }),
+              ],
+              [
+                CODEX_ADAPTER_ID,
+                createComposedCodexRuntime({
+                  resolveStart: (request) => {
+                    const { task, project } = lookupStartScope(composed, request.taskId);
+                    return resolveComposedCodexStart({
+                      request,
+                      worktrees,
+                      ...(task ? { task } : {}),
+                      ...(project?.objective ? { objective: project.objective } : {}),
+                    });
+                  },
+                }),
+              ],
+            ]),
             ...hostTerminal,
           })
         : new ComposedMockHost({
@@ -464,7 +497,7 @@ export class ComposedAppServices implements AppServices {
       },
       orchestration: {
         workflowBound: true,
-        /** Live Codex Host can start direct Runs; missing CLI/auth fail-closed. */
+        /** Live Host (Claude Code by default, Codex optional) can start direct Runs; missing CLI/auth fail-closed. */
         direct: true,
       },
     };
@@ -832,11 +865,14 @@ export class ComposedAppServices implements AppServices {
 
   listRuntimes(_query: ListQuery): PageDto<RuntimeDto> {
     void _query;
-    return pageOf([this.liveRuntime ? CODEX_RUNTIME : MOCK_RUNTIME]);
+    return pageOf(this.liveRuntime ? [CLAUDE_CODE_RUNTIME, CODEX_RUNTIME] : [MOCK_RUNTIME]);
   }
 
   getRuntime(id: string): RuntimeDto | null {
     if (this.liveRuntime) {
+      if (id === CLAUDE_CODE_RUNTIME_ID) {
+        return CLAUDE_CODE_RUNTIME;
+      }
       return id === CODEX_RUNTIME_ID ? CODEX_RUNTIME : null;
     }
     return id === MOCK_RUNTIME_ID ? MOCK_RUNTIME : null;
@@ -844,16 +880,20 @@ export class ComposedAppServices implements AppServices {
 
   getRuntimeCapabilities(id: string): RuntimeCapabilitiesDto | null {
     if (this.liveRuntime) {
-      if (id !== CODEX_RUNTIME_ID) {
+      const base =
+        id === CLAUDE_CODE_RUNTIME_ID
+          ? CLAUDE_CODE_RUNTIME_CAPABILITIES
+          : id === CODEX_RUNTIME_ID
+            ? CODEX_RUNTIME_CAPABILITIES
+            : undefined;
+      if (!base) {
         return null;
       }
-      const blocker = describeCodexHostBlocker();
+      const blocker = describeLiveRuntimeBlocker(id);
       return {
-        ...CODEX_RUNTIME_CAPABILITIES,
-        capabilities: CODEX_RUNTIME_CAPABILITIES.capabilities.map((item) =>
-          item.name === "coding"
-            ? { ...item, available: blocker === undefined }
-            : item,
+        ...base,
+        capabilities: base.capabilities.map((item) =>
+          item.name === "coding" ? { ...item, available: blocker === undefined } : item,
         ),
       };
     }
@@ -999,11 +1039,11 @@ export class ComposedAppServices implements AppServices {
         projectId: project.id,
         workspaceId: workspace.id,
         teamVersionId,
-        runtimeId: this.liveRuntime ? CODEX_RUNTIME_ID : MOCK_RUNTIME_ID,
+        runtimeId: this.liveRuntime ? DEFAULT_LIVE_RUNTIME_ID : MOCK_RUNTIME_ID,
         budgetId: project.budgetId ?? DEFAULT_BUDGET_ID,
         executionNodeId: LOCAL_NODE_ID,
         runtimeInstallationId: this.liveRuntime
-          ? CODEX_RUNTIME_INSTALLATION_ID
+          ? CLAUDE_CODE_RUNTIME_INSTALLATION_ID
           : MOCK_RUNTIME_INSTALLATION_ID,
         workspaceInstanceId: project.workspaceInstanceId ?? this.app.world.ids.ulid("wsi_"),
         ...optionalRevision(ctx.ifMatch),
@@ -1087,7 +1127,8 @@ export class ComposedAppServices implements AppServices {
       this.assertMatch(project.stateRevision, ctx.ifMatch);
       await this.assertRuntimeStartAllowed(project);
       await this.policy.assertStartAllowed({
-        runtime: project.runtimeId ?? (this.liveRuntime ? CODEX_RUNTIME_ID : MOCK_RUNTIME_ID),
+        runtime:
+          project.runtimeId ?? (this.liveRuntime ? DEFAULT_LIVE_RUNTIME_ID : MOCK_RUNTIME_ID),
         resource: `project:${project.id}`,
         ...(input.budgetHardLimitMinor !== undefined
           ? { budgetHardLimitMinor: input.budgetHardLimitMinor }
@@ -1414,7 +1455,7 @@ export class ComposedAppServices implements AppServices {
       const run = this.requireRun(id);
       const project = this.requireProject(run.projectId);
       await this.policy.assertPauseAllowed(
-        project.runtimeId ?? (this.liveRuntime ? CODEX_RUNTIME_ID : MOCK_RUNTIME_ID),
+        project.runtimeId ?? (this.liveRuntime ? DEFAULT_LIVE_RUNTIME_ID : MOCK_RUNTIME_ID),
       );
       await this.app.pauseRun(id);
       throw new AppError("unsupported_capability", "lifecycle.pause is unsupported");
@@ -2871,7 +2912,7 @@ export class ComposedAppServices implements AppServices {
     }
     if (this.liveRuntime) {
       throw new Error(
-        `Codex did not produce a Workforce ${slotId} artifact; refusing to fabricate Mock ${slotId}`,
+        `The runtime did not produce a Workforce ${slotId} artifact; refusing to fabricate Mock ${slotId}`,
       );
     }
     return syntheticOutput(slotId, nodeId);
@@ -2963,13 +3004,14 @@ export class ComposedAppServices implements AppServices {
   }
 
   private async assertRuntimeStartAllowed(project: ProjectRecord): Promise<void> {
+    const runtimeId =
+      project.runtimeId ?? (this.liveRuntime ? DEFAULT_LIVE_RUNTIME_ID : MOCK_RUNTIME_ID);
     if (this.liveRuntime) {
-      const blocker = describeCodexHostBlocker();
+      const blocker = describeLiveRuntimeBlocker(runtimeId);
       if (blocker) {
         throw new AppError("validation_failed", blocker);
       }
     }
-    const runtimeId = project.runtimeId ?? (this.liveRuntime ? CODEX_RUNTIME_ID : MOCK_RUNTIME_ID);
     await this.policy.assertStartAllowed({
       runtime: runtimeId,
       resource: `runtime:${runtimeId}`,
@@ -3721,6 +3763,18 @@ export async function createComposedAppServicesForTest(
     [sqliteWriterOption]: sqliteWriter,
   };
   return ComposedAppServices.open(internalOptions);
+}
+
+function describeLiveRuntimeBlocker(runtimeId: string): string | undefined {
+  return runtimeId === CODEX_RUNTIME_ID
+    ? describeCodexHostBlocker()
+    : describeClaudeCodeHostBlocker();
+}
+
+function lookupStartScope(composed: { services?: ComposedAppServices }, taskId: string) {
+  const task = composed.services?.app.world.tasks.get(taskId);
+  const project = task ? composed.services?.app.world.projects.get(task.projectId) : undefined;
+  return { task, project };
 }
 
 function optionalRevision(expectedStateRevision: number | undefined): {

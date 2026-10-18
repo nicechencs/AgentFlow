@@ -83,9 +83,9 @@ describe("dashboard workbench", () => {
     expect(html).toContain("Workforce");
     expect(html).toContain("未知成本");
     expect(html).not.toContain("3/4 在线");
-    expect(html).toContain("本机 Codex");
+    expect(html).toContain("本机 Claude Code");
     expect(html).not.toContain("本机 / Mock");
-    expect(html).toContain("本机 Codex Host");
+    expect(html).toContain("本机 Claude Code Host");
     void navigated;
   });
 

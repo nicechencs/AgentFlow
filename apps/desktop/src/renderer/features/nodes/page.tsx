@@ -68,7 +68,7 @@ function LocalNodePage(props: FeaturePageProps & { nodeId: string }): ReactNode 
   return (
     <Page
       title={detail ? "节点详情" : "执行节点"}
-      subtitle={detail ? props.nodeId : "V0.1 仅本机节点。远程 enrollment 未接入。当前 Host 是 Codex。"}
+      subtitle={detail ? props.nodeId : "V0.1 仅本机节点。远程 enrollment 未接入。当前 Host 默认是 Claude Code（Codex 可选）。"}
       actions={
         detail ? (
           <Button variant="outline" onClick={() => props.navigate("/nodes")}>
@@ -153,7 +153,7 @@ export function LocalNodeCard(props: {
       </ul>
       {props.detail === true ? (
         <Muted>
-          V0.1 仅本机节点。远程 enrollment 未接入。当前 Host 是 Codex；缺 CLI 或未登录时启动会失败。
+          V0.1 仅本机节点。远程 enrollment 未接入。当前 Host 默认是 Claude Code（Codex 可选）；缺 CLI 或未登录时启动会失败。
         </Muted>
       ) : null}
     </Card>

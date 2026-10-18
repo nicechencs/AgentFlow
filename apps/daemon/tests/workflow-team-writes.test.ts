@@ -14,6 +14,7 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createComposedAppServices } from "../src/composition/index.js";
+import { DEVELOPER_WORKER_VERSION_ID } from "../src/composition/catalog.js";
 import { startDaemon, type StartedDaemon } from "../src/bootstrap/index.js";
 import {
   commandHeaders,
@@ -147,7 +148,14 @@ describe("M7 workflow and team write API", () => {
       method: "POST",
       headers: commandHeaders(auth, "tm-version", team.stateRevision),
       body: JSON.stringify({
-        members: [{ role: "developer", runtimeProfileId: "mock", quantity: 1 }],
+        members: [
+          {
+            role: "developer",
+            runtimeProfileId: "mock",
+            quantity: 1,
+            workerVersionId: DEVELOPER_WORKER_VERSION_ID,
+          },
+        ],
       }),
     });
     expect(versionRes.status).toBe(201);

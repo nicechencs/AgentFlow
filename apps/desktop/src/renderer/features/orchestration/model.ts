@@ -18,7 +18,7 @@ export const DEFAULT_MODE = DEFAULT_ORCHESTRATION_MODE;
 export const DIRECT_CAPABILITY_NAME = "orchestration.direct";
 
 export const DIRECT_UNSUPPORTED =
-  "当前 capability probe 未声明 orchestration.direct。已禁用直接执行，避免假 mode。错误码：unsupported_capability。执行走本机 Codex Host；缺 CLI 或未登录会失败，不会回退 Mock。";
+  "当前 capability probe 未声明 orchestration.direct。已禁用直接执行，避免假 mode。错误码：unsupported_capability。执行走本机 Claude Code Host（默认，Codex 可选）；缺 CLI 或未登录会失败，不会回退 Mock。";
 
 export const WORKFLOW_BOUND_COPY =
   "跟随已发布工作流：只执行该项目已确认、已发布 WorkflowVersion 中轮到的节点。";
@@ -80,7 +80,7 @@ export function probeOrchestrationSupport(input: {
       workflowBound: true,
       direct: true,
       source: "capabilities",
-      reason: "GET /capabilities 声明 orchestration.direct。执行走本机 Codex Host；缺 CLI 或未登录会失败，不会回退 Mock。",
+      reason: "GET /capabilities 声明 orchestration.direct。执行走本机 Claude Code Host（默认，Codex 可选）；缺 CLI 或未登录会失败，不会回退 Mock。",
     };
   }
   const runtimeHit = input.runtimeCapabilities?.capabilities.some(
@@ -91,7 +91,7 @@ export function probeOrchestrationSupport(input: {
       workflowBound: true,
       direct: true,
       source: "runtime",
-      reason: "Runtime probe 声明 orchestration.direct。执行走本机 Codex Host；缺 CLI 或未登录会失败，不会回退 Mock。",
+      reason: "Runtime probe 声明 orchestration.direct。执行走本机 Claude Code Host（默认，Codex 可选）；缺 CLI 或未登录会失败，不会回退 Mock。",
     };
   }
   return emptyOrchestrationProbe();

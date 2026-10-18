@@ -1,4 +1,5 @@
 export { createComposedCodexRuntime } from "./codex.js";
+export { createComposedClaudeCodeRuntime } from "./claude-code.js";
 export {
   ComposedAppServices,
   createComposedAppServices,
@@ -10,6 +11,7 @@ export {
   LOCAL_NODE_ID,
   MOCK_RUNTIME_ID,
   CODEX_RUNTIME_ID,
+  CLAUDE_CODE_RUNTIME_ID,
   SOFTWARE_TEAM,
   TEAM_ID,
   TEAM_VERSION_ID,

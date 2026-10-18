@@ -279,7 +279,7 @@ export function CodexReadinessCard(props: {
       </StatusText>
       <Muted>{props.runtime?.summary ?? LOCAL_HOST_PROBE_PENDING}</Muted>
       <Muted>
-        干活走本机 Codex Host，不是给这个角色单独安装 CLI。Runtime / Policy 不是卡片必填。未发布草稿不能当员工去跑。
+        干活走本机 Claude Code Host（默认，Codex 可选），不是给这个角色单独安装 CLI。Runtime / Policy 不是卡片必填。未发布草稿不能当员工去跑。
       </Muted>
       <Cluster>
         {props.onOpenSettings ? (

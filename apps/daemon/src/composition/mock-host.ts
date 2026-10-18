@@ -48,6 +48,8 @@ export interface ComposedMockHostOptions {
   completeAfterMs?: number;
   adapter?: HostAdapter;
   defaultAdapterId?: string;
+  /** Adapter ids a Run may name. Others fall back to `defaultAdapterId`. */
+  adapterIds?: readonly string[];
   defaultSnapshotRef?: string;
   nodeId?: string;
 }
@@ -57,6 +59,7 @@ export class ComposedMockHost implements RuntimeHostPort {
   readonly host: LocalNodeHost;
   readonly defaultAdapterId: string;
   readonly defaultSnapshotRef: string;
+  private readonly adapterIds: ReadonlySet<string>;
   private readonly store: RuntimeHostStore;
   private readonly onTerminal: (event: RunTerminalEvent) => Promise<void>;
   private readonly onAuthoringProposal:
@@ -83,6 +86,7 @@ export class ComposedMockHost implements RuntimeHostPort {
         "Composed host requires an injected RuntimeAdapter or explicit completeAfterMs (test-only Mock). Host will not default to MockRuntimeAdapter.",
       );
     }
+    this.adapterIds = new Set(options.adapterIds ?? []);
     this.host = new LocalNodeHost({
       adapter: this.adapter,
       store: options.store,
@@ -110,7 +114,9 @@ export class ComposedMockHost implements RuntimeHostPort {
       clientId: request.clientId,
       placement: request.placement,
       runtime: {
-        adapterId: this.defaultAdapterId,
+        adapterId: this.adapterIds.has(request.runtime.adapterId)
+          ? request.runtime.adapterId
+          : this.defaultAdapterId,
         protocolVersion: request.runtime.protocolVersion || "0.1",
       },
       snapshotRef: request.snapshotRef || this.defaultSnapshotRef,

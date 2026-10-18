@@ -80,6 +80,7 @@ export class InMemoryPolicyEngine implements PolicyEngine {
     this.capabilities = options.capabilities ?? {
       mock: capabilitiesForRuntime("mock"),
       codex: capabilitiesForRuntime("codex"),
+      "claude-code": capabilitiesForRuntime("claude-code"),
     };
     this.credentialCapabilities = options.credentialCapabilities ?? probeCredentialCapabilities();
   }

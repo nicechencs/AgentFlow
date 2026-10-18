@@ -9,7 +9,7 @@ import {
 import { validationFailed } from "../projects/errors.js";
 
 export function resolveTransport(runtimeId: string | undefined): RuntimeTransport {
-  if (runtimeId === "codex") {
+  if (runtimeId === "codex" || runtimeId === "claude-code") {
     return "process";
   }
   return "sdk";

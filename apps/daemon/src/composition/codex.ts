@@ -86,7 +86,7 @@ export function resolveComposedCodexStart(input: {
   };
 }
 
-function buildCodexPrompt(input: { task?: TaskRecord; objective?: string }): string {
+export function buildCodexPrompt(input: { task?: TaskRecord; objective?: string }): string {
   const task = input.task;
   const lines = [
     "You are the Workforce coding runtime. Make the requested change in this git workspace.",

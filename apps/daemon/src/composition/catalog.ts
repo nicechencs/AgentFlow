@@ -41,6 +41,11 @@ export const MOCK_RUNTIME_VERSION = "0.1.0";
 export const CODEX_RUNTIME_ID = "codex";
 export const CODEX_RUNTIME_INSTALLATION_ID = "rtm_codex_local";
 export const CODEX_RUNTIME_VERSION = "0.1.0";
+export const CLAUDE_CODE_RUNTIME_ID = "claude-code";
+export const CLAUDE_CODE_RUNTIME_INSTALLATION_ID = "rtm_claude_code_local";
+export const CLAUDE_CODE_RUNTIME_VERSION = "0.1.0";
+/** Default executor for the live Host and the preset Team. Codex stays selectable. */
+export const DEFAULT_LIVE_RUNTIME_ID = CLAUDE_CODE_RUNTIME_ID;
 export const DEFAULT_BUDGET_ID = "bdg_local";
 export const MOCK_WORKFLOW_GRAPH_ID = "wfv_mock_feature";
 export const FEATURE_DELIVERY_WORKFLOW_ID = "software-development-team.feature-delivery";
@@ -152,7 +157,7 @@ export const PRESET_PLANNER_WORKER_VERSION: WorkerVersionDto = {
   archived: false,
   name: "Planner",
   role: "planner",
-  runtimeProfileId: CODEX_RUNTIME_ID,
+  runtimeProfileId: DEFAULT_LIVE_RUNTIME_ID,
   who: "规划软件交付的 Planner",
   how: "先产出 Plan Artifact，再发布 workflowVersion",
   skills: "规划、任务拆解",
@@ -169,7 +174,7 @@ export const PRESET_DEVELOPER_WORKER_VERSION: WorkerVersionDto = {
   archived: false,
   name: "Developer",
   role: "developer",
-  runtimeProfileId: CODEX_RUNTIME_ID,
+  runtimeProfileId: DEFAULT_LIVE_RUNTIME_ID,
   who: "实现变更的 Developer",
   how: "在隔离 worktree 里改代码并提交可整合产出",
   skills: "编码、实现",
@@ -186,7 +191,7 @@ export const PRESET_REVIEWER_WORKER_VERSION: WorkerVersionDto = {
   archived: false,
   name: "Reviewer",
   role: "reviewer",
-  runtimeProfileId: CODEX_RUNTIME_ID,
+  runtimeProfileId: DEFAULT_LIVE_RUNTIME_ID,
   who: "审查整合 digest 的 Reviewer",
   how: "对照计划与产出做审查，不改已发布版本",
   skills: "审查、质量把关",
@@ -297,21 +302,21 @@ export const SOFTWARE_TEAM_VERSION: TeamVersionDto = {
       id: "planner",
       role: "planner",
       workerVersionId: PLANNER_WORKER_VERSION_ID,
-      runtimeProfileId: CODEX_RUNTIME_ID,
+      runtimeProfileId: DEFAULT_LIVE_RUNTIME_ID,
       quantity: 1,
     },
     {
       id: "developer",
       role: "developer",
       workerVersionId: DEVELOPER_WORKER_VERSION_ID,
-      runtimeProfileId: CODEX_RUNTIME_ID,
+      runtimeProfileId: DEFAULT_LIVE_RUNTIME_ID,
       quantity: 2,
     },
     {
       id: "reviewer",
       role: "reviewer",
       workerVersionId: REVIEWER_WORKER_VERSION_ID,
-      runtimeProfileId: CODEX_RUNTIME_ID,
+      runtimeProfileId: DEFAULT_LIVE_RUNTIME_ID,
       quantity: 1,
     },
   ],
@@ -405,6 +410,20 @@ export const CODEX_RUNTIME_CAPABILITIES: RuntimeCapabilitiesDto = {
     { name: "event.resume", version: "1.0", available: false },
     { name: "authoring.proposal", version: "1.0", available: false },
   ],
+};
+
+export const CLAUDE_CODE_RUNTIME: RuntimeDto = {
+  id: CLAUDE_CODE_RUNTIME_ID,
+  displayName: "Claude Code CLI",
+  adapterId: CLAUDE_CODE_RUNTIME_ID,
+  version: CLAUDE_CODE_RUNTIME_VERSION,
+  protocolVersion: PROTOCOL_VERSION,
+  transport: "process",
+};
+
+export const CLAUDE_CODE_RUNTIME_CAPABILITIES: RuntimeCapabilitiesDto = {
+  ...CODEX_RUNTIME_CAPABILITIES,
+  runtimeId: CLAUDE_CODE_RUNTIME_ID,
 };
 
 export function unknownProjectBudget(projectId: string): ProjectBudgetDto {

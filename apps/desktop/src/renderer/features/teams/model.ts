@@ -12,7 +12,7 @@ export { workerCardFieldNames };
 export const PRESET_TEAM_ID = "software-development-team" as const;
 export const LIVE_PRESET_TEAM_ID = "tm_software_development" as const;
 export const PRESET_TEAM_VERSION = "0.1.0" as const;
-export const PRESET_RUNTIME_ID = "codex" as const;
+export const PRESET_RUNTIME_ID = "claude-code" as const;
 export const PRESET_PLANNER_WORKER_ID = "wrk_software_planner" as const;
 export const PRESET_PLANNER_WORKER_VERSION_ID = "wrv_software_planner_0_1_0" as const;
 export const PRESET_DEVELOPER_WORKER_ID = "wrk_software_developer" as const;
@@ -99,7 +99,7 @@ export const PRESET_TEAM: TeamView = {
   kind: "preset",
   status: "published",
   readonly: true,
-  runtime: { adapterId: PRESET_RUNTIME_ID, label: "Codex" },
+  runtime: { adapterId: PRESET_RUNTIME_ID, label: "Claude Code" },
   members: PRESET_MEMBERS,
   workers: PRESET_MEMBERS.map(memberToWorker),
 };

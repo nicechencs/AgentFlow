@@ -50,7 +50,8 @@ export function capabilitiesForRuntime(runtime: string): readonly CapabilityReco
   if (runtime === "mock") {
     return MOCK_CAPABILITIES;
   }
-  if (runtime === "codex") {
+  // Claude Code CLI is held to the same conservative record as Codex until measured.
+  if (runtime === "codex" || runtime === "claude-code") {
     return CODEX_WINDOWS_CAPABILITIES;
   }
   return [];

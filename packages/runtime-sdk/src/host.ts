@@ -827,6 +827,9 @@ export class LocalNodeHost implements RuntimeAdapter {
   }
 
   private async assertAdapterId(request: StartRunRequest): Promise<void> {
+    if (this.adapter.supportsAdapterId?.(request.runtime.adapterId)) {
+      return;
+    }
     const descriptor = await this.adapter.describe();
     if (request.runtime.adapterId !== descriptor.adapter.id) {
       throw new RuntimeSdkError("validation_failed", "adapter id does not match this host", {

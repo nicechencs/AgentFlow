@@ -80,6 +80,9 @@ importers:
       '@workforce/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@workforce/runtime-claude-code':
+        specifier: workspace:*
+        version: link:../../runtimes/claude-code
       '@workforce/runtime-codex':
         specifier: workspace:*
         version: link:../../runtimes/codex
@@ -381,6 +384,28 @@ importers:
       '@workforce/domain':
         specifier: workspace:*
         version: link:../domain
+    devDependencies:
+      '@types/node':
+        specifier: 22.20.2
+        version: 22.20.2
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
+  runtimes/claude-code:
+    dependencies:
+      '@workforce/process':
+        specifier: workspace:*
+        version: link:../../packages/process
+      '@workforce/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      '@workforce/runtime-sdk':
+        specifier: workspace:*
+        version: link:../../packages/runtime-sdk
+      '@workforce/runtime-spi':
+        specifier: workspace:*
+        version: link:../../packages/runtime-spi
     devDependencies:
       '@types/node':
         specifier: 22.20.2

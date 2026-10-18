@@ -29,6 +29,7 @@
     "@workforce/policy": "workspace:*",
     "@workforce/process": "workspace:*",
     "@workforce/protocol": "workspace:*",
+    "@workforce/runtime-claude-code": "workspace:*",
     "@workforce/runtime-codex": "workspace:*",
     "@workforce/runtime-mock": "workspace:*",
     "@workforce/runtime-sdk": "workspace:*",

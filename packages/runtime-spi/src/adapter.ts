@@ -116,6 +116,11 @@ export interface RuntimeConfig {
 
 export interface RuntimeAdapter {
   describe(): Promise<RuntimeDescriptor>;
+  /**
+   * Optional. A composite adapter that routes to several runtimes answers for
+   * every adapter id it serves; a single adapter is matched by `describe()`.
+   */
+  supportsAdapterId?(adapterId: string): boolean;
   validate(config: RuntimeConfig): Promise<ValidationResult>;
   start(request: StartRunRequest): Promise<RuntimeHandle>;
   sendInput(handle: RuntimeHandleRef, input: RuntimeInput): Promise<InputReceipt>;

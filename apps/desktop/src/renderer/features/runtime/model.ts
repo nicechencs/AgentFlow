@@ -1,15 +1,21 @@
 import type { DesktopClient, RuntimeCapabilitiesDto, RuntimeDto } from "@workforce/desktop-client";
 
-/** Product Host is Codex. UI must not present Mock as the current runtime. */
-export const LOCAL_HOST_TITLE = "本机 Codex";
-export const LOCAL_HOST_RUNTIME_FIELD = "Codex CLI";
-export const LOCAL_HOST_READY = "本机 Codex CLI 已就绪。";
+/** Product Host defaults to Claude Code (Codex stays selectable). UI must not present Mock as the current runtime. */
+export const DEFAULT_HOST_ADAPTER_ID = "claude-code";
+const LIVE_ADAPTER_IDS: readonly string[] = ["claude-code", "codex"];
+export const LOCAL_HOST_TITLE = "本机 Claude Code";
+export const LOCAL_HOST_RUNTIME_FIELD = "Claude Code CLI";
+export const LOCAL_HOST_READY = "本机 Claude Code CLI 已就绪。";
 export const LOCAL_HOST_NOT_READY =
-  "Codex 未就绪：未检测到 CLI 或未登录。启动会失败，不会回退 Mock。";
+  "Claude Code 未就绪：未检测到 CLI 或未登录。启动会失败，不会回退 Mock。";
 export const LOCAL_HOST_PROBE_PENDING =
-  "本机 Codex Host。未返回 Runtime 目录前不当成有本地执行器在干活；缺 CLI 或未登录时启动会失败。";
+  "本机 Claude Code Host。未返回 Runtime 目录前不当成有本地执行器在干活；缺 CLI 或未登录时启动会失败。";
 export const LOCAL_HOST_NOT_CODEX =
-  "当前 Daemon 未组成 Codex Host。产品默认是 Codex、fail-closed；不要把测试夹具当成在干活。";
+  "当前 Daemon 未组成 Claude Code / Codex Host。产品默认是 Claude Code、fail-closed；不要把测试夹具当成在干活。";
+
+function hostFieldLabel(adapterId: string): string {
+  return adapterId === "codex" ? "Codex CLI" : LOCAL_HOST_RUNTIME_FIELD;
+}
 
 export interface HostRuntimeView {
   adapterId: string;
@@ -22,7 +28,7 @@ export interface HostRuntimeView {
 
 export function unprobedHostRuntime(): HostRuntimeView {
   return {
-    adapterId: "codex",
+    adapterId: DEFAULT_HOST_ADAPTER_ID,
     displayName: LOCAL_HOST_RUNTIME_FIELD,
     title: LOCAL_HOST_TITLE,
     fieldLabel: LOCAL_HOST_RUNTIME_FIELD,
@@ -33,7 +39,7 @@ export function unprobedHostRuntime(): HostRuntimeView {
 
 export function missingHostRuntime(): HostRuntimeView {
   return {
-    adapterId: "codex",
+    adapterId: DEFAULT_HOST_ADAPTER_ID,
     displayName: LOCAL_HOST_RUNTIME_FIELD,
     title: LOCAL_HOST_TITLE,
     fieldLabel: LOCAL_HOST_RUNTIME_FIELD,
@@ -48,9 +54,9 @@ export function viewFromRuntime(
 ): HostRuntimeView {
   const adapterId = runtime.adapterId || runtime.id;
   const codingReady =
-    adapterId === "codex" &&
+    LIVE_ADAPTER_IDS.includes(adapterId) &&
     capabilities?.capabilities.some((item) => item.name === "coding" && item.available) === true;
-  if (adapterId !== "codex") {
+  if (!LIVE_ADAPTER_IDS.includes(adapterId)) {
     return {
       adapterId,
       displayName: runtime.displayName,
@@ -60,12 +66,15 @@ export function viewFromRuntime(
       codingReady: false,
     };
   }
+  const field = hostFieldLabel(adapterId);
   return {
     adapterId,
     displayName: runtime.displayName,
-    title: LOCAL_HOST_TITLE,
-    fieldLabel: LOCAL_HOST_RUNTIME_FIELD,
-    summary: codingReady ? LOCAL_HOST_READY : LOCAL_HOST_NOT_READY,
+    title: `本机 ${field.replace(" CLI", "")}`,
+    fieldLabel: field,
+    summary: codingReady
+      ? `本机 ${field} 已就绪。`
+      : `${field.replace(" CLI", "")} 未就绪：未检测到 CLI 或未登录。启动会失败，不会回退 Mock。`,
     codingReady,
   };
 }
@@ -92,11 +101,14 @@ export async function probeHostRuntime(
 }
 
 export function runtimeProfileLabel(profile: string): string {
+  if (profile === "claude-code") {
+    return "Claude Code";
+  }
   if (profile === "codex") {
     return "Codex";
   }
   if (profile === "mock") {
-    return "Codex（Host 已钉死；配置字段 mock 不是当前执行器）";
+    return "Claude Code（Host 已钉死；配置字段 mock 不是当前执行器）";
   }
   return profile;
 }
@@ -107,6 +119,11 @@ export function projectRuntimeLabel(runtime: HostRuntimeView): string {
 
 function pickListedRuntime(items: readonly RuntimeDto[]): RuntimeDto | null {
   return (
-    items.find((item) => item.adapterId === "codex" || item.id === "codex") ?? items[0] ?? null
+    items.find(
+      (item) => item.adapterId === DEFAULT_HOST_ADAPTER_ID || item.id === DEFAULT_HOST_ADAPTER_ID,
+    ) ??
+    items.find((item) => item.adapterId === "codex" || item.id === "codex") ??
+    items[0] ??
+    null
   );
 }

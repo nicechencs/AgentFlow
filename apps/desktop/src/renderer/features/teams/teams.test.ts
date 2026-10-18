@@ -65,7 +65,7 @@ describe("team pages", () => {
       "reviewer",
     ]);
     expect(PRESET_TEAM.members.map((member) => member.quantity)).toEqual([1, 1, 1]);
-    expect(PRESET_TEAM.runtime.label).toBe("Codex");
+    expect(PRESET_TEAM.runtime.label).toBe("Claude Code");
     expect(PRESET_TEAM.readonly).toBe(true);
     expect(PRESET_TEAM.kind).toBe("preset");
   });
@@ -386,7 +386,7 @@ describe("team catalog parsing", () => {
     expect(fromRoles?.kind).toBe("preset");
     expect(fromRoles?.members[0]).toMatchObject({
       role: "planner",
-      runtimeProfile: "codex",
+      runtimeProfile: "claude-code",
       quantity: 1,
     });
     const custom = asTeamView({
