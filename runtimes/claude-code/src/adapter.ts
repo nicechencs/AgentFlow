@@ -796,7 +796,7 @@ export class ClaudeCodeRuntimeAdapter implements RuntimeAdapter {
       }
       throw error;
     }
-    session.pendingAuthoringRequest = undefined;
+    delete session.pendingAuthoringRequest;
     session.processHandle = captured.handle;
     session.captured = captured;
     session.handle = {

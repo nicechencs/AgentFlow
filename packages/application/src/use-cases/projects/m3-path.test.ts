@@ -179,7 +179,7 @@ describe("M3 workflow path", () => {
 
     const artifactA = "arv_code_a";
     // Completion barrier requires at least one pass evaluation (04aff49).
-    app.world.evaluations.set("eval_a", {
+    app.recordEvaluationEvidence({
       id: "eval_a",
       artifactVersionId: artifactA,
       verdict: "pass",
@@ -195,7 +195,7 @@ describe("M3 workflow path", () => {
 
     const runB = await app.startRun({ operationId: "op_run_b", taskId: devB.id });
     app.recordRunSucceeded(runB.run.id);
-    app.world.evaluations.set("eval_b", {
+    app.recordEvaluationEvidence({
       id: "eval_b",
       artifactVersionId: "arv_code_b",
       verdict: "pass",
@@ -213,7 +213,7 @@ describe("M3 workflow path", () => {
 
     const runR = await app.startRun({ operationId: "op_run_r", taskId: review.id });
     app.recordRunSucceeded(runR.run.id);
-    app.world.evaluations.set("eval_r", {
+    app.recordEvaluationEvidence({
       id: "eval_r",
       artifactVersionId: "arv_eval",
       verdict: "pass",

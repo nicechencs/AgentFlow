@@ -72,6 +72,11 @@ export async function admitRun(
       attempt: task.attempt,
     });
 
+  // CAS against the client If-Match *before* internal queue/dispatch, which
+  // bump stateRevision. Re-checking the stale revision after queue caused 412
+  // on every ready→direct start (Chat「去做」/ ad-hoc).
+  expectRevision(task, input.expectedStateRevision);
+
   if (task.status === "ready") {
     await queueTask(ctx, {
       operationId: `${input.operationId}:queue`,
@@ -109,7 +114,6 @@ export async function admitRun(
       async () => {
         return ctx.world.withDomainRollback(async () => {
           const live = requireTask(ctx, input.taskId);
-          expectRevision(live, input.expectedStateRevision);
           const liveProject = requireProject(ctx, live.projectId);
           if (liveProject.id !== project.id || live.projectId !== project.id) {
             throw validationFailed("task does not belong to this project");

@@ -23,10 +23,13 @@ const AUTH_PROBE_TIMEOUT_MS = 15_000;
  * login never falls back to Mock or to another runtime.
  */
 export function createComposedClaudeCodeRuntime(
-  options: Pick<ClaudeCodeRuntimeAdapterOptions, "detect" | "resolveStart" | "platform"> = {},
+  options: Pick<
+    ClaudeCodeRuntimeAdapterOptions,
+    "detect" | "resolveStart" | "platform" | "process"
+  > = {},
 ): ClaudeCodeRuntimeAdapter {
   return createClaudeCodeRuntime({
-    process: new OsProcessController(),
+    process: options.process ?? new OsProcessController(),
     ...options,
   });
 }

@@ -40,7 +40,7 @@ export async function captureLivePatch(input: {
   const captured = await input.git.captureDiff(input.instanceId);
   if (captured.patch.trim().length === 0) {
     throw new Error(
-      `Codex produced no git diff for ${input.nodeId}; refusing to fabricate a patch`,
+      `执行器没有产出可捕获的 git diff（${input.nodeId}）；拒绝伪造补丁`,
     );
   }
   return captured;

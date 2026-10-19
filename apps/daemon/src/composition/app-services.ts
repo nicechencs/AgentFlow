@@ -67,8 +67,12 @@ import {
 import { interpretMockAuthoringIntent } from "@workforce/runtime-mock";
 import { WorkspaceError } from "@workforce/workspace";
 import { InvalidTransitionError, validateWorkflowGraph } from "@workforce/workflow-engine";
+import type { ProcessController } from "@workforce/process";
 import { RuntimeSdkError } from "@workforce/runtime-sdk";
-import { CLAUDE_CODE_ADAPTER_ID } from "@workforce/runtime-claude-code";
+import {
+  CLAUDE_CODE_ADAPTER_ID,
+  type ClaudeCodeDetection,
+} from "@workforce/runtime-claude-code";
 import { CODEX_ADAPTER_ID } from "@workforce/runtime-codex";
 
 import { loadOrCreateClientId, loadOrCreatePrincipalId } from "../bootstrap/state-file.js";
@@ -220,16 +224,33 @@ const AUTHORING_PROPOSAL_CONSUMER = "daemon.authoring-proposal";
 type SqliteWriter = typeof dualWriteSqlite;
 const sqliteWriterOption = Symbol("sqliteWriter");
 
+export interface ClaudeCodeCompositionTestHooks {
+  /** Override CLI detection (e.g. point at fixtures/jsonl-double.mjs). */
+  detect?: () => ClaudeCodeDetection;
+  /** Inject captured Process (Fake or Os with fixture executable). */
+  process?: ProcessController;
+  /**
+   * Override Host blocker used by resolveStart and assertRuntimeStartAllowed.
+   * Return undefined to pretend CLI is present and logged in (fixture path).
+   */
+  describeBlocker?: () => string | undefined;
+}
+
 export interface ComposedAppServicesOptions {
   stateDir: string;
   principalId?: string;
   clientId?: string;
   /**
-   * Test-only Mock Host opt-in. Production omits this and uses Codex.
+   * Test-only Mock Host opt-in. Production omits this and uses the live Claude Code Host.
    * Never treat a missing value as 10ms Mock success.
    */
   completeAfterMs?: number;
   policyEngine?: InMemoryPolicyEngine;
+  /**
+   * Test-only Claude Code hooks for fail-closed / recorded success without Anthropic.
+   * Production must omit. When set, Live Host still uses Claude Code routing.
+   */
+  claudeCodeForTest?: ClaudeCodeCompositionTestHooks;
 }
 
 type InternalComposedAppServicesOptions = ComposedAppServicesOptions & {
@@ -246,8 +267,9 @@ export class ComposedAppServices implements AppServices {
   readonly policy: CompositionPolicy;
   readonly authoring: CatalogService;
   readonly stateDir: string;
-  /** True when production Codex Host is composed. False is test-only Mock. */
+  /** True when production live Host is composed. False is test-only Mock. */
   readonly liveRuntime: boolean;
+  private readonly describeClaudeBlocker: () => string | undefined;
   private readonly hostStore: JsonRuntimeHostStore;
   private readonly sqliteWriter: SqliteWriter;
   private readonly eventSubscriptions: SqliteSubscriptionReader;
@@ -275,6 +297,7 @@ export class ComposedAppServices implements AppServices {
     sqliteWriter: SqliteWriter;
     authoring: CatalogService;
     liveRuntime: boolean;
+    describeClaudeBlocker: () => string | undefined;
   }) {
     this.stateDir = input.stateDir;
     this.app = input.app;
@@ -292,6 +315,7 @@ export class ComposedAppServices implements AppServices {
     this.sqliteWriter = input.sqliteWriter;
     this.authoring = input.authoring;
     this.liveRuntime = input.liveRuntime;
+    this.describeClaudeBlocker = input.describeClaudeBlocker;
     this.eventSubscriptions = new SqliteSubscriptionReader(input.sqlite.connection);
   }
 
@@ -332,6 +356,9 @@ export class ComposedAppServices implements AppServices {
         return composed.services.handleAuthoringProposal(event);
       },
     };
+    const claudeHooks = options.claudeCodeForTest;
+    const describeClaudeBlocker =
+      claudeHooks?.describeBlocker ?? describeClaudeCodeHostBlocker;
     const host =
       options.completeAfterMs === undefined
         ? new ComposedMockHost({
@@ -344,6 +371,8 @@ export class ComposedAppServices implements AppServices {
               [
                 CLAUDE_CODE_ADAPTER_ID,
                 createComposedClaudeCodeRuntime({
+                  ...(claudeHooks?.detect ? { detect: claudeHooks.detect } : {}),
+                  ...(claudeHooks?.process ? { process: claudeHooks.process } : {}),
                   resolveStart: (request) => {
                     const { task, project } = lookupStartScope(composed, request.taskId);
                     return resolveComposedClaudeCodeStart({
@@ -351,6 +380,7 @@ export class ComposedAppServices implements AppServices {
                       worktrees,
                       ...(task ? { task } : {}),
                       ...(project?.objective ? { objective: project.objective } : {}),
+                      blocker: describeClaudeBlocker,
                     });
                   },
                 }),
@@ -414,6 +444,7 @@ export class ComposedAppServices implements AppServices {
       policy,
       authoring,
       liveRuntime,
+      describeClaudeBlocker,
       sqliteWriter:
         (options as InternalComposedAppServicesOptions)[sqliteWriterOption] ?? dualWriteSqlite,
     });
@@ -889,7 +920,8 @@ export class ComposedAppServices implements AppServices {
       if (!base) {
         return null;
       }
-      const blocker = describeLiveRuntimeBlocker(id);
+      const blocker =
+        id === CODEX_RUNTIME_ID ? describeCodexHostBlocker() : this.describeClaudeBlocker();
       return {
         ...base,
         capabilities: base.capabilities.map((item) => {
@@ -1306,37 +1338,45 @@ export class ComposedAppServices implements AppServices {
     },
   ): Promise<CommandResult<RunDto>> {
     return this.exclusive(async () => {
-      const task = this.requireTask(id);
-      this.assertMatch(task.stateRevision, ctx.ifMatch);
-      const orchestrationMode = input.orchestrationMode ?? DEFAULT_ORCHESTRATION_MODE;
-      assertStartOrchestrationAllowed(orchestrationMode, this.capabilities());
-      await this.assertRuntimeStartAllowed(this.requireProject(task.projectId));
-      const started =
-        orchestrationMode === "direct"
-          ? await this.app.startDirectWork({
-              operationId: ctx.operationId,
-              idempotencyKey: ctx.operationId,
-              projectId: task.projectId,
-              taskId: id,
-              ...(ctx.ifMatch !== undefined ? { expectedTaskStateRevision: ctx.ifMatch } : {}),
-              ...(input.placementIntent ? { placementIntent: input.placementIntent } : {}),
-            })
-          : await this.app.startTaskRun({
-              operationId: ctx.operationId,
-              idempotencyKey: ctx.operationId,
-              taskId: id,
-              orchestrationMode,
-              snapshotRef: this.host.defaultSnapshotRef,
-              requireWorkflowBinding: true,
-              ...optionalRevision(ctx.ifMatch),
-              ...(input.placementIntent ? { placementIntent: input.placementIntent } : {}),
-            });
-      this.persist();
-      return {
-        status: started.reused ? 200 : 201,
-        body: this.runDto(started.run),
-        revision: this.requireTask(id).stateRevision,
-      };
+      try {
+        const task = this.requireTask(id);
+        this.assertMatch(task.stateRevision, ctx.ifMatch);
+        const orchestrationMode = input.orchestrationMode ?? DEFAULT_ORCHESTRATION_MODE;
+        assertStartOrchestrationAllowed(orchestrationMode, this.capabilities());
+        const project = this.requireProject(task.projectId);
+        if (orchestrationMode === "direct") {
+          await this.ensureDirectRunGovernance(project);
+        }
+        await this.assertRuntimeStartAllowed(project);
+        const started =
+          orchestrationMode === "direct"
+            ? await this.app.startDirectWork({
+                operationId: ctx.operationId,
+                idempotencyKey: ctx.operationId,
+                projectId: task.projectId,
+                taskId: id,
+                ...(ctx.ifMatch !== undefined ? { expectedTaskStateRevision: ctx.ifMatch } : {}),
+                ...(input.placementIntent ? { placementIntent: input.placementIntent } : {}),
+              })
+            : await this.app.startTaskRun({
+                operationId: ctx.operationId,
+                idempotencyKey: ctx.operationId,
+                taskId: id,
+                orchestrationMode,
+                snapshotRef: this.host.defaultSnapshotRef,
+                requireWorkflowBinding: true,
+                ...optionalRevision(ctx.ifMatch),
+                ...(input.placementIntent ? { placementIntent: input.placementIntent } : {}),
+              });
+        this.persist();
+        return {
+          status: started.reused ? 200 : 201,
+          body: this.runDto(started.run),
+          revision: this.requireTask(id).stateRevision,
+        };
+      } catch (error) {
+        throw wrapError(error);
+      }
     });
   }
 
@@ -2901,12 +2941,20 @@ export class ComposedAppServices implements AppServices {
         );
       }
       if (this.liveRuntime) {
-        const captured = await captureLivePatch({
-          git: this.worktrees.git,
-          instanceId: provisioned.workspaceInstanceId,
-          nodeId: provisioned.nodeId,
-        });
-        return gitDiffArtifactFromCapture(captured, provisioned.nodeId);
+        try {
+          const captured = await captureLivePatch({
+            git: this.worktrees.git,
+            instanceId: provisioned.workspaceInstanceId,
+            nodeId: provisioned.nodeId,
+          });
+          return gitDiffArtifactFromCapture(captured, provisioned.nodeId);
+        } catch (error) {
+          // Ad-hoc direct may finish with no file edits; do not invent a patch.
+          if (task.workflowInstanceId === undefined) {
+            return adHocNoDiffEvaluation(provisioned.nodeId);
+          }
+          throw error;
+        }
       }
       const captured = await captureMockPatch({
         git: this.worktrees.git,
@@ -3009,11 +3057,39 @@ export class ComposedAppServices implements AppServices {
     });
   }
 
+  /**
+   * Direct / Chat「去做」does not require confirm-plan. Bind a local workspace and
+   * a default budget when missing, so admit governance does not fail closed on a
+   * draft project that only has an ad-hoc Task.
+   */
+  private async ensureDirectRunGovernance(project: ProjectRecord): Promise<void> {
+    await this.workspaceFor(project);
+    if (!project.workspaceInstanceId) {
+      project.workspaceInstanceId = this.app.world.ids.ulid("wsi_");
+    }
+    const budgetId = project.budgetId ?? DEFAULT_BUDGET_ID;
+    if (!this.app.world.budgets.has(budgetId)) {
+      this.app.world.budgets.set(budgetId, {
+        id: budgetId,
+        projectId: project.id,
+        currency: "USD",
+        limitMinor: 1_000_000,
+        reservedMinor: 0,
+        settledMinor: 0,
+        authorizationVersion: 1,
+      });
+    }
+    project.budgetId = budgetId;
+  }
+
   private async assertRuntimeStartAllowed(project: ProjectRecord): Promise<void> {
     const runtimeId =
       project.runtimeId ?? (this.liveRuntime ? DEFAULT_LIVE_RUNTIME_ID : MOCK_RUNTIME_ID);
     if (this.liveRuntime) {
-      const blocker = describeLiveRuntimeBlocker(runtimeId);
+      const blocker =
+        runtimeId === CODEX_RUNTIME_ID
+          ? describeCodexHostBlocker()
+          : this.describeClaudeBlocker();
       if (blocker) {
         throw new AppError("validation_failed", blocker);
       }
@@ -3771,12 +3847,6 @@ export async function createComposedAppServicesForTest(
   return ComposedAppServices.open(internalOptions);
 }
 
-function describeLiveRuntimeBlocker(runtimeId: string): string | undefined {
-  return runtimeId === CODEX_RUNTIME_ID
-    ? describeCodexHostBlocker()
-    : describeClaudeCodeHostBlocker();
-}
-
 function lookupStartScope(composed: { services?: ComposedAppServices }, taskId: string) {
   const task = composed.services?.app.world.tasks.get(taskId);
   const project = task ? composed.services?.app.world.projects.get(task.projectId) : undefined;
@@ -3990,6 +4060,24 @@ function toVersionDto(record: ArtifactContentRecord): ArtifactVersionDto {
     size: record.size,
     mediaType: record.mediaType,
     createdAt: record.createdAt,
+  };
+}
+
+
+function adHocNoDiffEvaluation(nodeId: string): {
+  mediaType: string;
+  kind: "evaluation";
+  body: Uint8Array;
+} {
+  return {
+    mediaType: KIND_MEDIA_TYPES.evaluation,
+    kind: "evaluation",
+    body: encoder.encode(
+      JSON.stringify({
+        verdict: "pass",
+        summary: `执行已结束（${nodeId}），工作区没有可捕获的文件改动。`,
+      }),
+    ),
   };
 }
 

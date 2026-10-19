@@ -99,7 +99,7 @@ export function insertAdHocTask(
     maxReworkCycles: 1,
     priority: 50,
     requiresReview: false,
-    expectedOutputs: [{ id: "result", kind: "code", required: true }],
+    expectedOutputs: [{ id: "result_code", kind: "code", required: true }],
     outputBindings: {},
     dependsOn: [],
     inputArtifactVersionIds: [],

@@ -19,6 +19,7 @@ import { absorbDirectArtifact, createAdHocTask } from "./direct-task.js";
 import { startDirectWork } from "./start-direct-work.js";
 import {
   bindTaskOutput,
+  recordEvaluationEvidence,
   cancelTask,
   queueTask,
   requestTaskChanges,
@@ -99,6 +100,8 @@ export class WorkforceApp {
     startDirectWork(this.ctx, input);
   queueTask = (input: Parameters<typeof queueTask>[1]) => queueTask(this.ctx, input);
   bindTaskOutput = (input: Parameters<typeof bindTaskOutput>[1]) => bindTaskOutput(this.ctx, input);
+  recordEvaluationEvidence = (input: Parameters<typeof recordEvaluationEvidence>[1]) =>
+    recordEvaluationEvidence(this.ctx, input);
   retryTask = (input: Parameters<typeof retryTask>[1]) => retryTask(this.ctx, input);
   requestTaskChanges = (input: Parameters<typeof requestTaskChanges>[1]) =>
     requestTaskChanges(this.ctx, input);

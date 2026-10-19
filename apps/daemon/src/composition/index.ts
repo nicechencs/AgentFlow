@@ -3,6 +3,7 @@ export { createComposedClaudeCodeRuntime } from "./claude-code.js";
 export {
   ComposedAppServices,
   createComposedAppServices,
+  type ClaudeCodeCompositionTestHooks,
   type ComposedAppServicesOptions,
 } from "./app-services.js";
 export {

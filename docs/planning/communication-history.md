@@ -37,6 +37,12 @@ updated: 2026-10-19
 
 ---
 
+## 2026-10-19（Asia/Taipei）整包 D：去做 → Claude Code direct + evaluation 门
+
+- **决定：** 收口 Chat「去做」→ 项目内 ad-hoc Task → `POST /tasks/{id}/runs`（direct）→ 默认 Claude Code。缺 CLI / 未登录 fail-closed、中文报错、不回退 Mock。真实 Anthropic 不可用时用录制夹具测成功路径，文档不得写成真号已验收。Run 成功后自动写入 pass evaluation，与完成门对齐。
+- **文档影响：** [实现进度](03-implementation-status.md) 整包 D；本页本条。能力矩阵 path 未改。
+- **状态：** Mock / 夹具 / fail-closed **implemented**（定向测试）。真实 Anthropic headed「去做」仍 **planned**。完整 M8 产品完成仍 **planned**。
+
 ## 2026-10-14（Asia/Taipei）产品名改为 AgentFlow
 
 - **决定：** 产品对外名称从 Workforce 改为 AgentFlow，GitHub 仓库为 https://github.com/nicechencs/AgentFlow。本次只改用户可见显示名、启动提示、文档入口标题和安装包 productName。不改 `@workforce/*` 包名、协议 URN、类型名、CSS `--wf-` / `wf-` 前缀，也不改已有用户数据目录（`%APPDATA%\Workforce`、macOS Application Support/Workforce、Linux XDG `workforce`），避免已安装实例找不到状态。
