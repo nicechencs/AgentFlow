@@ -39,7 +39,7 @@ updated: 2026-10-19
 | Marketplace | **现在不是一等面，未来要做**；装进来仍进自己的库再 Team 绑 Project。不要写成永久禁止 | T00；契约扩展归 T02 |
 | 工作流作者路径 | 对话生成草稿（D17）后必须可在画布/结构化面编辑（D15）；未发布不得执行 | T18、T20、T02 |
 | Agent 执行模式 | 绑定已发布工作流，或直接执行；两者皆一等、靠 probe 诚实显隐（D18） | T21、T09、T10 |
-| 默认执行器 | **Claude Code（已落地，2026-10-19）**；Codex 仍可选（见 [D20](#d20--工作流默认执行器claude-code)） | T15、T10、T21 |
+| 默认执行器 | **Claude Code（Host 可选中，2026-10-19；撞号已修）**；Codex 仍可选（见 [D20](#d20--工作流默认执行器claude-code)） | T15、T10、T21 |
 | 执行 Placement | 种类：`local`（本机，**默认**）\| `remote` \| `container`。调度意图仍为 `automatic \| local_only \| remote_only \| specific_node`，系统默认 `local_only`。V0.1 只实现 Local Node + worktree；远程=契约/Mock，容器=planned，均非 later nicety（D07 / D19） | T02、T05、T09、T10、T13 |
 | 初始交付结果 | 固定基线 SHA 的整合 patch/分支 + 报告；合回用户目标分支是显式动作 | T06、T08、T14、T16 |
 | Planner 流程 | 先配置再规划；Planner 是普通受控 Task/Run；确认 Plan 版本后才发布冻结执行 DAG | T02、T09、T12、T14 |
@@ -574,10 +574,11 @@ Authoring 契约：对话 turn/raw intent 先由 Application 创建受治理 aut
 ### D20 — 工作流默认执行器：Claude Code
 
 - **决定（2026-10-19，用户决定）：** 工作流默认使用 **Claude Code** 执行。
-- **现状（已落地，2026-10-19）：** 新增适配器 `runtimes/claude-code`，生产 Daemon 的 Host 默认适配器是 Claude Code（`apps/daemon/src/composition/app-services.ts:340`），由 `RoutingRuntimeAdapter`（`apps/daemon/src/composition/runtime-router.ts:26`）按 Run 的 `runtime.adapterId` 在 Claude Code 与 Codex 之间分发，未知 id 报错不回退；预设 Team 运行时是 Claude Code（`apps/desktop/src/renderer/features/teams/model.ts:15`）。Mock 只在测试里显式传 `completeAfterMs` 时使用。
-- **失败要清楚（D18）：** 没安装 `claude` 或没登录时，启动前报中文错误（`apps/daemon/src/composition/claude-code.ts:75`），`coding` 能力显示不可用；不悄悄改用 Mock 或 Codex。
+- **现状（Host 能选到 Claude Code，2026-10-19；撞号已修）：** 新增适配器 `runtimes/claude-code`。`CLAUDE_CODE_ADAPTER_ID` 必须是 `"claude-code"`（`runtimes/claude-code/src/adapter.ts:38`），与 Host 默认/`GET /runtimes`/预设 Team 一致；**曾误写成 `"codex"`，与 Codex 撞号导致路由表被盖掉、默认启动报未知执行器，已修。** 生产 Daemon Host 默认是 Claude Code（`apps/daemon/src/composition/app-services.ts:340`），由 `RoutingRuntimeAdapter`（`apps/daemon/src/composition/runtime-router.ts:26`）按 Run 的 `runtime.adapterId` 分发，未知 id 报错不回退；预设 Team 运行时是 Claude Code（`apps/desktop/src/renderer/features/teams/model.ts:15`）。Mock 只在测试里显式传 `completeAfterMs` 时使用。
+- **「已落地」条件：** 仅表示 Host 真能按 id 选到 Claude Code，且缺 CLI/未登录 fail-closed。**不**表示真实 Anthropic 登录下任务已可用。
+- **失败要清楚（D18）：** 没安装 `claude` 或没登录时，启动前报中文错误（`apps/daemon/src/composition/claude-code.ts:72`），`coding` 能力显示不可用；不悄悄改用 Mock 或 Codex。
 - **未验证：** 没有在真实 Anthropic 账号登录下跑过真实任务；写文件/跑命令路径与权限模式只有单元测试。Claude Code 的沙箱强度按与 Codex 相同的保守记录处理（`packages/policy/src/enforcement.ts`），未单独实测。
-- **兼容：** Codex 继续保留为可选执行器；`RuntimeProfile` 里 `adapterType` 已含 `claude_code`（见蓝图领域模型），无需改协议名。
+- **兼容：** Codex 继续保留为可选执行器（id `"codex"`）；`RuntimeProfile` 里 `adapterType` 已含 `claude_code`（见蓝图领域模型），无需改协议名。
 
 ## 11. 交接
 

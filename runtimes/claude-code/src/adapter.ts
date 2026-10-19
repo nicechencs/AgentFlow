@@ -35,7 +35,7 @@ import {
   type ResolveClaudeCodeStartContext,
 } from "./start-context.js";
 
-export const CLAUDE_CODE_ADAPTER_ID = "codex";
+export const CLAUDE_CODE_ADAPTER_ID = "claude-code";
 export const CLAUDE_CODE_ADAPTER_VERSION = "0.1.0";
 
 export interface ClaudeCodeRuntimeAdapterOptions {

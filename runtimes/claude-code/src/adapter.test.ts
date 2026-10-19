@@ -174,12 +174,19 @@ function collect(stream: AsyncIterable<unknown>): Promise<unknown[]> {
 }
 
 describe("ClaudeCodeRuntimeAdapter", () => {
+  it("uses adapter id claude-code, distinct from Codex", () => {
+    expect(CLAUDE_CODE_ADAPTER_ID).toBe("claude-code");
+    expect(CLAUDE_CODE_ADAPTER_ID).not.toBe("codex");
+  });
+
   it("describes start/cancel blocked when Process or resolveStart is missing", async () => {
     const adapter = new ClaudeCodeRuntimeAdapter({
       detect: () => detected(),
     });
     const descriptor = await adapter.describe();
     expect(descriptor.adapter.id).toBe(CLAUDE_CODE_ADAPTER_ID);
+    expect(descriptor.adapter.id).toBe("claude-code");
+    expect(descriptor.runtime.id).toBe("claude-code");
     expect(descriptor.runtime.transport).toBe("process");
     expect(descriptor.capabilities.find((item) => item.name === "lifecycle.start")).toMatchObject({
       available: false,

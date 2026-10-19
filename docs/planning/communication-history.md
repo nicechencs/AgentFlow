@@ -579,6 +579,14 @@ updated: 2026-10-19
 ## 2026-10-19（Asia/Taipei）工作流默认使用 Claude Code；文档对齐 `232797d`
 
 - **决定：** 用户决定工作流默认使用 Claude Code 执行（登记为 [D20](decision-register.md#d20--工作流默认执行器claude-code)），并同意随后动手实现。
-- **落地：** 同日新增 `runtimes/claude-code` 适配器，Daemon Host 与预设 Team 默认改为 Claude Code，Codex 仍可选；缺 CLI 或未登录给中文报错、不回退 Mock。同时修了「发布自定义团队版本」测试：根因是发布规则要求成员引用已发布 `workerVersionId`，测试成员漏带，已补引用，期望值未改。
-- **文档影响：** [实现进度](03-implementation-status.md) 修订条目改为已落地并写明未验证项；[决策登记](decision-register.md) D20 改为已落地；[能力矩阵](api-capability-matrix.md) 的 `GET /runtimes` 与默认执行器说明已更新；`app-services.ts` 行号已按新代码重核。改名 AgentFlow 只改显示名，`@workforce/*` 包名与数据目录保留。
-- **状态：** 默认 Claude Code 为 **implemented**（单元/组合测试通过；**未在真实 Anthropic 登录下实跑**）。
+- **落地（当日初版）：** 同日新增 `runtimes/claude-code` 适配器，Daemon Host 与预设 Team 默认改为 Claude Code，Codex 仍可选；缺 CLI 或未登录给中文报错、不回退 Mock。同时修了「发布自定义团队版本」测试：根因是发布规则要求成员引用已发布 `workerVersionId`，测试成员漏带，已补引用，期望值未改。
+- **事后发现（同日）：** 初版把 `CLAUDE_CODE_ADAPTER_ID` 误写成 `"codex"`，与 Codex 撞号，见下一条。
+- **文档影响：** [实现进度](03-implementation-status.md)、[决策登记](decision-register.md) D20、[能力矩阵](api-capability-matrix.md) 已记默认执行器；改名 AgentFlow 只改显示名，`@workforce/*` 包名与数据目录保留。
+- **状态：** 初版单元/组合测试曾通过，但适配器 ID 撞号使 Host **实际选不到** Claude Code；以同日 P0 修复为准。
+
+## 2026-10-19（Asia/Taipei）P0：Claude Code 适配器 ID 撞号已修
+
+- **问题：** `runtimes/claude-code/src/adapter.ts` 的 `CLAUDE_CODE_ADAPTER_ID` 误为 `"codex"`，与 Codex 同键。`RoutingRuntimeAdapter` 与 Host `adapterIds` 注册时互相覆盖；目录/默认值是 `claude-code`，`start` 报未知执行器。
+- **修复：** ID 改为 `"claude-code"`；Codex 保持 `"codex"`。补断言：两 ID 不同、默认启动走 Claude Code、注册表不覆盖。
+- **文档：** [实现进度](03-implementation-status.md)、[D20](decision-register.md#d20--工作流默认执行器claude-code)、[能力矩阵](api-capability-matrix.md) 改为诚实表述——「已落地」= Host 真能选到 Claude Code；**不**宣称真实 Anthropic 登录下已可用。
+- **状态：** 撞号 **fixed**（相关单元/组合测试 + `pnpm check:docs`）。真实 Anthropic 登录实跑、写文件/跑命令真窗仍未验证。

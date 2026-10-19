@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { CLAUDE_CODE_ADAPTER_ID } from "@workforce/runtime-claude-code";
+import { CODEX_ADAPTER_ID } from "@workforce/runtime-codex";
 import { createStartRunRequest } from "@workforce/runtime-sdk";
 import type { RuntimeAdapter, RuntimeHandle } from "@workforce/runtime-spi";
 
@@ -13,6 +14,7 @@ import {
   createComposedClaudeCodeRuntime,
   describeClaudeCodeHostBlocker,
 } from "../src/composition/claude-code.js";
+import { DEFAULT_LIVE_RUNTIME_ID } from "../src/composition/catalog.js";
 import { createComposedAppServices } from "../src/composition/index.js";
 import { RoutingRuntimeAdapter } from "../src/composition/runtime-router.js";
 
@@ -105,6 +107,40 @@ function stubAdapter(id: string, calls: string[]): RuntimeAdapter {
     reconcile: async (h) => ({ attached: true, status: { handle: h, status: "running" } }),
   };
 }
+
+describe("adapter id registry", () => {
+  it("keeps Claude Code and Codex ids distinct so a Map cannot overwrite either", () => {
+    expect(CLAUDE_CODE_ADAPTER_ID).toBe("claude-code");
+    expect(CODEX_ADAPTER_ID).toBe("codex");
+    expect(CLAUDE_CODE_ADAPTER_ID).not.toBe(CODEX_ADAPTER_ID);
+    expect(DEFAULT_LIVE_RUNTIME_ID).toBe(CLAUDE_CODE_ADAPTER_ID);
+    // Same registration shape as app-services live Host.
+    const keys = [CLAUDE_CODE_ADAPTER_ID, CODEX_ADAPTER_ID];
+    expect(new Set(keys).size).toBe(2);
+  });
+
+  it("registers both adapters without overwrite; default id starts Claude Code", async () => {
+    const calls: string[] = [];
+    const router = new RoutingRuntimeAdapter([
+      [CLAUDE_CODE_ADAPTER_ID, stubAdapter(CLAUDE_CODE_ADAPTER_ID, calls)],
+      [CODEX_ADAPTER_ID, stubAdapter(CODEX_ADAPTER_ID, calls)],
+    ]);
+    expect(router.supportsAdapterId(CLAUDE_CODE_ADAPTER_ID)).toBe(true);
+    expect(router.supportsAdapterId(CODEX_ADAPTER_ID)).toBe(true);
+    expect(router.supportsAdapterId(DEFAULT_LIVE_RUNTIME_ID)).toBe(true);
+
+    await router.start(
+      createStartRunRequest({ runtime: { adapterId: DEFAULT_LIVE_RUNTIME_ID } }),
+    );
+    await router.start(
+      createStartRunRequest({ runtime: { adapterId: CODEX_ADAPTER_ID } }),
+    );
+    expect(calls).toEqual([
+      `start:${CLAUDE_CODE_ADAPTER_ID}`,
+      `start:${CODEX_ADAPTER_ID}`,
+    ]);
+  });
+});
 
 describe("RoutingRuntimeAdapter", () => {
   it("routes by adapter id, follows the handle, and never falls back for an unknown id", async () => {
