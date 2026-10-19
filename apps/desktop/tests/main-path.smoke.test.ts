@@ -140,6 +140,13 @@ describe("desktop project main path", () => {
     { timeout: 25_000 },
     async () => {
       const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "wf-desktop-ui-smoke-"));
+      const workspaceHost = path.join(stateDir, "smoke-workspace");
+      fs.mkdirSync(workspaceHost, { recursive: true });
+      // Mirror Electron Main: persist picker grant so Daemon bindProject can resolve wsauth_*.
+      fs.writeFileSync(
+        path.join(stateDir, "workspace-grants.json"),
+        `${JSON.stringify({ grants: { wsauth_smoke: workspaceHost } }, null, 2)}\n`,
+      );
       const services = await createComposedAppServices({ stateDir, completeAfterMs: 5 });
       const daemon = await startDaemon({
         stateDir,

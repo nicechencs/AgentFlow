@@ -356,9 +356,9 @@ export function RunConsoleView(props: RunConsoleViewProps): ReactNode {
           <Muted>用量区分未知 / 估算 / 已结算。未知成本不是 0。</Muted>
           <Muted>WorkerVersion：{FIELD_UNRETURNED}</Muted>
           <Muted>
-            现在能不能用 Codex：{props.runtime?.summary ?? LOCAL_HOST_PROBE_PENDING}
+            现在能不能用本机执行器：{props.runtime?.summary ?? LOCAL_HOST_PROBE_PENDING}
           </Muted>
-          <Muted>Host：{props.runtime?.title ?? "本机 Codex"}</Muted>
+          <Muted>Host：{props.runtime?.title ?? "本机 Claude Code"}</Muted>
           <Muted>Runtime：{props.run.transport ?? FIELD_UNRETURNED}</Muted>
           <Muted>节点：{FIELD_UNRETURNED}</Muted>
           <Muted>WorkspaceInstance：{FIELD_UNRETURNED}</Muted>

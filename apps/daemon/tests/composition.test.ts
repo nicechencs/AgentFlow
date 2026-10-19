@@ -6,7 +6,6 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 
-import { MOCK_PLAN_DOCUMENT } from "@workforce/application";
 import { WorkforceSqlite } from "@workforce/database";
 import { createCanonicalAction } from "@workforce/policy";
 import { protocolVersion } from "@workforce/protocol";
@@ -727,7 +726,9 @@ describe("composed M3 mock loop", () => {
     ).toMatchObject({ count: 1 });
     expect(
       harness.services.sqlite.connection
-        .prepare("SELECT COUNT(*) AS count FROM authoring_messages WHERE content_ref LIKE 'mem:%'")
+        .prepare(
+          "SELECT COUNT(*) AS count FROM authoring_messages WHERE content_ref LIKE 'transient:authoring:message:%'",
+        )
         .get(),
     ).toMatchObject({ count: 1 });
     expect(
@@ -1551,11 +1552,15 @@ describe("composed M3 mock loop", () => {
     if (!planApproval) {
       throw new Error("expected a plan approval");
     }
+    const planBody = planApproval.artifactVersionId
+      ? services.app.world.artifacts.get(planApproval.artifactVersionId)?.body
+      : undefined;
+    expect(planBody).toBeTruthy();
     expect(planApproval.actionDigest).toBe(
       createCanonicalAction({
         type: "plan.apply",
         resource: planApproval.resource,
-        params: MOCK_PLAN_DOCUMENT,
+        params: planBody,
         ...(planApproval.artifactVersionId !== undefined
           ? { version: planApproval.artifactVersionId }
           : {}),

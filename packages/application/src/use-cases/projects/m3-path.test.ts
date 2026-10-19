@@ -178,6 +178,12 @@ describe("M3 workflow path", () => {
     expect(app.world.tasks.get(devA.id)?.status).toBe("running");
 
     const artifactA = "arv_code_a";
+    // Completion barrier requires at least one pass evaluation (04aff49).
+    app.world.evaluations.set("eval_a", {
+      id: "eval_a",
+      artifactVersionId: artifactA,
+      verdict: "pass",
+    });
     app.bindTaskOutput({
       taskId: devA.id,
       slotId: "code_a",
@@ -189,6 +195,11 @@ describe("M3 workflow path", () => {
 
     const runB = await app.startRun({ operationId: "op_run_b", taskId: devB.id });
     app.recordRunSucceeded(runB.run.id);
+    app.world.evaluations.set("eval_b", {
+      id: "eval_b",
+      artifactVersionId: "arv_code_b",
+      verdict: "pass",
+    });
     app.bindTaskOutput({
       taskId: devB.id,
       slotId: "code_b",
@@ -202,6 +213,11 @@ describe("M3 workflow path", () => {
 
     const runR = await app.startRun({ operationId: "op_run_r", taskId: review.id });
     app.recordRunSucceeded(runR.run.id);
+    app.world.evaluations.set("eval_r", {
+      id: "eval_r",
+      artifactVersionId: "arv_eval",
+      verdict: "pass",
+    });
     app.bindTaskOutput({
       taskId: review.id,
       slotId: "eval",

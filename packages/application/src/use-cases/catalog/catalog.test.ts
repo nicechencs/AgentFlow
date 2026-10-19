@@ -75,17 +75,42 @@ describe("catalog write use-cases", () => {
   });
 
   it("publishes a TeamVersion and refuses unpublished start-planning binds", () => {
-    const catalog = service();
+    const store = new MemoryCatalog();
+    const catalog = new CatalogService({
+      catalog: store,
+      ids: new MemoryIds(),
+      now: () => "2026-09-11T12:00:00.000Z",
+      validateWorkflowGraph,
+    });
+    const resolveWorker = (id: string) => store.findWorkerVersion(id);
     const team = catalog.createTeam({ name: "Squad" });
     const draft = catalog.createTeamVersion(team.id, {
       members: [{ role: "developer", runtimeProfileId: "mock", quantity: 1 }],
     });
-    expect(isBindableTeamVersion(draft)).toBe(false);
-    expect(() => catalog.assertBindableTeamVersion(draft.id)).toThrow(/unpublished/i);
+    expect(isBindableTeamVersion(draft, resolveWorker)).toBe(false);
+    expect(() => catalog.assertBindableTeamVersion(draft.id)).toThrow(/cannot bind or start planning/i);
     expect(catalog.listPublishedTeams()).toEqual([]);
+    // Publish requires every member to reference a published workerVersionId.
+    expect(() => catalog.publishTeamVersion(team.id, draft.id)).toThrow(/workerVersionId/i);
 
-    const published = catalog.publishTeamVersion(team.id, draft.id);
-    expect(isBindableTeamVersion(published)).toBe(true);
+    const worker = catalog.createWorker({
+      name: "Squad developer",
+      role: "developer",
+      who: "写代码的人",
+    });
+    const workerVersion = catalog.publishWorkerDraft(worker.worker.id, worker.draft.id);
+    const ready = catalog.createTeamVersion(team.id, {
+      members: [
+        {
+          role: "developer",
+          runtimeProfileId: "mock",
+          quantity: 1,
+          workerVersionId: workerVersion.id,
+        },
+      ],
+    });
+    const published = catalog.publishTeamVersion(team.id, ready.id);
+    expect(isBindableTeamVersion(published, resolveWorker)).toBe(true);
     expect(catalog.assertBindableTeamVersion(published.id).immutable).toBe(true);
     expect(catalog.listPublishedTeams().map((item) => item.id)).toEqual([team.id]);
     expect(() =>

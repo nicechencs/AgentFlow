@@ -12,6 +12,7 @@ updated: 2026-10-19
 状态：**已冻结（首版按钮与 endpoint；项目制主循环；M7 补齐 Team/Workflow 编排与对话生成；M8 双执行模式 planned；角色版本库与全局 Chat 契约已接线，产品完成态未宣称）**  
 权威：[decision-register.md](decision-register.md) §0、D08、D15、D16、D17、D18、D19。沟通历史：[communication-history.md](communication-history.md)。实现深度以 [03-implementation-status.md](03-implementation-status.md) 为准。  
 未实现能力必须在 UI 隐藏或 disabled，并返回明确错误；禁止前端假成功。  
+修订：2026-10-19 — 整包 B：Live `orchestration.direct === true`；allowlist **已放行** `POST /tasks/{id}/runs`。`:start`+direct → 400 validation（走 Task Run）；probe false → 422。Chat「去做」按 probe 显隐。**不**宣称 M8 / 真跑完成。不发明 `:direct`。
 修订：2026-09-13 — WV-T02-DIRECT-INTENT：ChatIntent expand `start_direct`（必带 `projectId`，可选 `taskId` / `title`）。「去做」落到已冻 `POST /tasks/{id}/runs`（`orchestrationMode: "direct"`，body 即已有 `startDirectTaskRunInput` / `startTaskRunInput`）。无 `taskId` 时只 expand `POST /projects/{id}/tasks`（仅 ad-hoc，body 不得带 `workflowInstanceId`）。`need_context.missing` 可含 `taskId`。IM 仍 `unsupported` / `im`。**禁止** `/runs/{id}:direct`、`/projects/{id}:direct`。`StartRunRequest` 不加 `orchestrationMode`。  
 修订：2026-09-13 — WV-T00-ALIGN：按 `d376ba2` 只改正事实句，**不**发明 path。库 / Chat HTTP **已接线**（不再写 planned / Daemon 未实现）。AuthoringSession allowlist **已放行**。`POST /tasks/{id}/runs` **有路由**，allowlist 仍 `blockedUntil: "T10-TASK-RUN-HTTP"`；`orchestration.direct` 为 false；Chat「去做」仍 `unsupported_capability`。不发明 `:direct`。Marketplace 不是当前债。
 

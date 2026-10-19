@@ -502,6 +502,8 @@ Authoring 契约：对话 turn/raw intent 先由 Application 创建受治理 aut
 
 **范围（M8 必达，完成态尚未实现）：**
 
+**接线现状（2026-10-19，整包 B；≠ M8 完成）：** Live `capabilities.orchestration.direct === true`；Fake 仍 `false`。allowlist 已放行 `POST /tasks/{id}/runs`。Chat「去做」/项目页按 probe 显隐，落点 `startDirectWork` / Task Run。`:start`+`direct` → 400 `validation_failed`（错入口）；probe 为 false → 422。**未** Claude Code ad-hoc 真跑、**未**真窗验收「去做」。
+
 1. **workflow-bound：** 跟随该项目已确认、已发布的 `WorkflowVersion`（D02）。Agent 只执行图中轮到它的节点，不得暗改活动执行图。
 2. **direct：** 直接执行用户/任务此刻给出的目标（ad-hoc / 绕过该次已发布图）。Application 先创建项目内 ad-hoc Task，待三轴解析与同一 Policy、Workspace、预算、Approval、Artifact/Evaluation、capability probe 治理完成后再创建正常 Run；它只绕过 WorkflowInstance 调度，不绕过控制面，不是「无协议乱跑」。direct 永不推进 WorkflowInstance 或 Project；若吸收成果，必须另发 workflow-bound/follow-up command，显式引用精确 ArtifactVersion 并重新验收，原 direct Run 不改变父聚合。
 3. 两种模式都必须在 UI 与 API **诚实**出现：用 `GET /capabilities` 或 Runtime/Agent probe 决定能否选；无能力则禁用或启动前 `422 unsupported_capability`；禁止假 mode、假成功、把只读文案做成可点。
@@ -523,7 +525,7 @@ Authoring 契约：对话 turn/raw intent 先由 Application 创建受治理 aut
 
 - direct 不是取消 Approval、预算或隔离 worktree。
 - 不是第二套 Workflow 引擎，也不是让 Renderer 直接 spawn Runtime。
-- 不得用 Mock 成功冒充 direct 已在真实 Codex 验证。
+- 不得用 Mock 成功冒充 direct 已在真实 Claude Code / Codex 验证。
 - 空闲对角色说话不是 direct，也不因此新建 Task/Run 或开 IM。
 
 **收窄对照（相对「做事 = Task/Run」的误读）：**
@@ -531,7 +533,7 @@ Authoring 契约：对话 turn/raw intent 先由 Application 创建受治理 aut
 | 原表述 | 收窄后 |
 |---|---|
 | 对角色说话 = 派活 / direct | 空闲说话写卡片；下次请来才带上；不新建 Task/Run |
-| Chat「去做」可先假装跑起来 | 继续诚实 `unsupported_capability`；本批不实现 D18 调度 |
+| Chat「去做」可先假装跑起来 | Live probe 为 true 时可点并走 Task Run；未真跑前不得渲染 completed；Fake/无 probe 仍 `unsupported_capability` |
 
 ## 10. 执行 Placement：本机默认；远程与容器为一等能力
 

@@ -79,7 +79,7 @@ async function injectJson(
 
 describe("composed orchestrationMode pass-through", () => {
   it(
-    "threads workflow_bound into project.start / Run records and still refuses unsupported direct",
+    "threads workflow_bound into project.start / Run records and refuses :start with direct",
     { timeout: 40_000 },
     async () => {
     const harness = await startInjected();
@@ -111,8 +111,9 @@ describe("composed orchestrationMode pass-through", () => {
       headers: commandHeaders(auth, "orch-comp-direct", ready.stateRevision),
       body: JSON.stringify({ orchestrationMode: "direct" }),
     });
-    expect(refused.status).toBe(422);
-    expect(refused.body).toMatchObject({ code: "unsupported_capability" });
+    // Live probe allows direct, but project.start is the wrong endpoint (use Task Run).
+    expect(refused.status).toBe(400);
+    expect(refused.body).toMatchObject({ code: "validation_failed" });
 
     const started = await injectJson(harness, `/api/v1/projects/${project.id}:start`, {
       method: "POST",

@@ -24,10 +24,10 @@ export const WORKFLOW_BOUND_COPY =
   "跟随已发布工作流：只执行该项目已确认、已发布 WorkflowVersion 中轮到的节点。";
 
 export const DIRECT_COPY =
-  "直接执行：有所选 Task 时 POST /tasks/{id}/runs（orchestrationMode=direct）；无 Task 时先 POST /projects/{id}/tasks 建 ad-hoc Task 再跑同一 Run 接口。仍走 Policy、Workspace、预算与 Approval。Host 是本机 Codex；缺 CLI 或未登录会失败。不是 Renderer 直接 spawn，也不走 :start，没有 :direct URL。";
+  "直接执行：有所选 Task 时 POST /tasks/{id}/runs（orchestrationMode=direct）；无 Task 时先 POST /projects/{id}/tasks 建 ad-hoc Task 再跑同一 Run 接口。仍走 Policy、Workspace、预算与 Approval。Host 是本机 Claude Code（默认，Codex 可选）；缺 CLI 或未登录会失败。不是 Renderer 直接 spawn，也不走 :start，没有 :direct URL。";
 
 export const SLICE_NOTE =
-  "workflow_bound 走 POST /projects/{id}:start；direct 走 POST /tasks/{id}/runs。Task 详情不挂未接线控件。Host 是本机 Codex；缺 CLI 或未登录会失败，不会回退 Mock。没有 :direct URL，也不是 headed 验收。";
+  "workflow_bound 走 POST /projects/{id}:start；direct 走 POST /tasks/{id}/runs。Task 详情不挂未接线控件。Host 是本机 Claude Code（默认，Codex 可选）；缺 CLI 或未登录会失败，不会回退 Mock。没有 :direct URL，也不是 headed 验收。";
 
 export const DIRECT_TASK_REQUIRED =
   "直接执行需要选择项目内已有 Task，再 POST /tasks/{id}/runs。不会改走 :start 假装成功，也不会由 Renderer 创建 ad-hoc Task。";

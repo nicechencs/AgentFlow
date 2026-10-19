@@ -512,7 +512,7 @@ function LandingCard(props: {
         <Muted>未选角色时，建角色确认后会进库草稿详情。空闲写卡请先选角色。</Muted>
       )}
       <p className="wf-muted" data-testid="chat-landing-codex">
-        现在能不能用 Codex：{props.runtime?.summary ?? LOCAL_HOST_PROBE_PENDING}
+        现在能不能用本机执行器：{props.runtime?.summary ?? LOCAL_HOST_PROBE_PENDING}
       </p>
     </Card>
   );

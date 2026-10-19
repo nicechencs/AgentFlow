@@ -986,7 +986,7 @@ function SettingsPanel(props: {
   return (
     <>
       <Card title="WorkspaceBinding" testId="project-settings-workspace">
-        <Muted>绑定工作区、已发布团队与本机 Codex Runtime。未检测到 CLI 或未登录时启动会失败，不会回退 Mock。</Muted>
+        <Muted>绑定工作区、已发布团队与本机 Claude Code Runtime（默认，Codex 可选）。未检测到 CLI 或未登录时启动会失败，不会回退 Mock。</Muted>
         <div className="wf-cluster">
           {showBind ? (
             <Button testId="project-bind-workspace" onClick={props.onBind}>

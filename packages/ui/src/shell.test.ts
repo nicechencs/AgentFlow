@@ -20,6 +20,7 @@ describe("buildShellView", () => {
       "dashboard",
       "projects",
       "teams",
+      "role-library",
       "nodes",
       "approvals",
       "runs",

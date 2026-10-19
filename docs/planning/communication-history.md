@@ -590,3 +590,11 @@ updated: 2026-10-19
 - **修复：** ID 改为 `"claude-code"`；Codex 保持 `"codex"`。补断言：两 ID 不同、默认启动走 Claude Code、注册表不覆盖。
 - **文档：** [实现进度](03-implementation-status.md)、[D20](decision-register.md#d20--工作流默认执行器claude-code)、[能力矩阵](api-capability-matrix.md) 改为诚实表述——「已落地」= Host 真能选到 Claude Code；**不**宣称真实 Anthropic 登录下已可用。
 - **状态：** 撞号 **fixed**（相关单元/组合测试 + `pnpm check:docs`）。真实 Anthropic 登录实跑、写文件/跑命令真窗仍未验证。
+
+## 2026-10-19（Asia/Taipei）整包 B：direct 探测收口与测试债
+
+- **决定 / 范围：** 在 Claude Code 适配器 ID 撞号修好之后，收口 D18 探测与约 8 项失败测试；不宣称 M8 真跑完成。
+- **代码事实：** Live `direct === true`；Fake `false`；Task Run allowlist 已放行；`:start`+direct → 400 `validation_failed`；Chat/项目页按 probe 显隐。完成门要求至少一条 pass evaluation。
+- **测试债根因与修法：** 品牌 `W`→`A`；侧栏补 `role-library`；catalog 发布须带已发布 `workerVersionId`；authoring `content_ref` 前缀改为 `transient:authoring:message:`；plan digest 按实际生成计划计算；m3-path 在 bind 前写入 pass evaluation；smoke 写入 `workspace-grants.json` 镜像 Electron Main。
+- **文档：** [实现进度](03-implementation-status.md)、[D18](decision-register.md#d18--双执行模式绑定工作流与直接执行)、[能力矩阵](api-capability-matrix.md)。
+- **状态：** 相关定向测试已绿；**未** Chat「去做」真窗、**未** Claude Code ad-hoc 真跑、composition 仍不自动写 T08→evaluations。

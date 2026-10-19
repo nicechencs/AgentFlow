@@ -273,9 +273,9 @@ export function CodexReadinessCard(props: {
 }): ReactNode {
   const ready = props.runtime?.codingReady === true;
   return (
-    <Card title="现在能不能用 Codex" testId="role-library-codex">
+    <Card title="现在能不能用本机执行器" testId="role-library-codex">
       <StatusText tone={ready ? "success" : "warning"}>
-        {ready ? "本机 Codex CLI 已就绪" : "Codex 未就绪"}
+        {ready ? "本机执行器 CLI 已就绪" : "执行器未就绪"}
       </StatusText>
       <Muted>{props.runtime?.summary ?? LOCAL_HOST_PROBE_PENDING}</Muted>
       <Muted>

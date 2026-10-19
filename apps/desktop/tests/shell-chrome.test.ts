@@ -128,7 +128,7 @@ describe("desktop shell chrome", () => {
     expect(document.querySelector(".wf-shell")?.getAttribute("data-nav-collapsed")).toBe("true");
     expect(document.querySelector('[aria-label="展开侧栏"]')).not.toBeNull();
     expect(document.querySelector('[aria-label="收起侧栏"]')).toBeNull();
-    expect(document.querySelector(".wf-nav-brand-toggle .wf-brand-mark")?.textContent).toBe("W");
+    expect(document.querySelector(".wf-nav-brand-toggle .wf-brand-mark")?.textContent).toBe("A");
     expect(document.querySelector(".wf-nav-header .wf-nav-collapse")).toBeNull();
 
     await act(async () => {
