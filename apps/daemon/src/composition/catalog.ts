@@ -422,8 +422,20 @@ export const CLAUDE_CODE_RUNTIME: RuntimeDto = {
 };
 
 export const CLAUDE_CODE_RUNTIME_CAPABILITIES: RuntimeCapabilitiesDto = {
-  ...CODEX_RUNTIME_CAPABILITIES,
   runtimeId: CLAUDE_CODE_RUNTIME_ID,
+  input: false,
+  pause: false,
+  resume: false,
+  takeOver: false,
+  capabilities: [
+    { name: "coding", version: "1.0", available: false },
+    { name: "interactive_input", version: "1.0", available: false },
+    { name: "lifecycle.pause", version: "1.0", available: false },
+    { name: "event.resume", version: "1.0", available: false },
+    // Available is flipped true when Claude Code CLI is present and logged in.
+    // Live Anthropic authoring is still untested; see D17/D20.
+    { name: "authoring.proposal", version: "1.0", available: true },
+  ],
 };
 
 export function unknownProjectBudget(projectId: string): ProjectBudgetDto {

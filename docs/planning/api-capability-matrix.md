@@ -12,6 +12,7 @@ updated: 2026-10-19
 状态：**已冻结（首版按钮与 endpoint；项目制主循环；M7 补齐 Team/Workflow 编排与对话生成；M8 双执行模式 planned；角色版本库与全局 Chat 契约已接线，产品完成态未宣称）**  
 权威：[decision-register.md](decision-register.md) §0、D08、D15、D16、D17、D18、D19。沟通历史：[communication-history.md](communication-history.md)。实现深度以 [03-implementation-status.md](03-implementation-status.md) 为准。  
 未实现能力必须在 UI 隐藏或 disabled，并返回明确错误；禁止前端假成功。  
+修订：2026-10-19 — 整包 C：Claude Code `authoring.proposal` 在 CLI 可用时探测为 true（录制夹具可测；**未**真实 Anthropic 验收）。画布写 path 既有；新增 API 闭环测（保存/reload/发布/未发布拒绑/绑已发布）。Codex `authoring.proposal` 仍 false。**不**宣称 M7/headed 完成。
 修订：2026-10-19 — 整包 B：Live `orchestration.direct === true`；allowlist **已放行** `POST /tasks/{id}/runs`。`:start`+direct → 400 validation（走 Task Run）；probe false → 422。Chat「去做」按 probe 显隐。**不**宣称 M8 / 真跑完成。不发明 `:direct`。
 修订：2026-09-13 — WV-T02-DIRECT-INTENT：ChatIntent expand `start_direct`（必带 `projectId`，可选 `taskId` / `title`）。「去做」落到已冻 `POST /tasks/{id}/runs`（`orchestrationMode: "direct"`，body 即已有 `startDirectTaskRunInput` / `startTaskRunInput`）。无 `taskId` 时只 expand `POST /projects/{id}/tasks`（仅 ad-hoc，body 不得带 `workflowInstanceId`）。`need_context.missing` 可含 `taskId`。IM 仍 `unsupported` / `im`。**禁止** `/runs/{id}:direct`、`/projects/{id}:direct`。`StartRunRequest` 不加 `orchestrationMode`。  
 修订：2026-09-13 — WV-T00-ALIGN：按 `d376ba2` 只改正事实句，**不**发明 path。库 / Chat HTTP **已接线**（不再写 planned / Daemon 未实现）。AuthoringSession allowlist **已放行**。`POST /tasks/{id}/runs` **有路由**，allowlist 仍 `blockedUntil: "T10-TASK-RUN-HTTP"`；`orchestration.direct` 为 false；Chat「去做」仍 `unsupported_capability`。不发明 `:direct`。Marketplace 不是当前债。
@@ -310,8 +311,8 @@ M8 必达——双执行模式（**完成态未实现**；本分支有 start 回
 | 新建项目 | `POST /projects` | — |
 | 选择仓库 | 项目详情 Settings → 原生 dialog → `POST .../workspaces` | draft |
 | 选预设团队/Mock Runtime/预算 | PATCH project 或专用 config（T02 定一个） | draft |
-| 新建/保存工作流画布 | `POST/PATCH /workflows` 与 version 写接口 | M7；草稿。未发布不得启动执行 |
-| 对话生成工作流草稿 | 上列 AuthoringSession 写接口 + 复用 M7 workflow 写接口落草稿；`CHAT_SESSION_PROTOCOL_FROZEN=true` | M7 planned（D17）。Daemon HTTP + typed send 已有，Electron allowlist **已放行** authoring-sessions。无 Codex 编排 Agent。**不**宣称对话编排完成 |
+| 新建/保存工作流画布 | `POST/PATCH /workflows` 与 version 写接口 | M7 部分；草稿。API 闭环测已有（含 reload/发布/拒绑）。未发布不得启动执行。**未** headed |
+| 对话生成工作流草稿 | 上列 AuthoringSession 写接口 + 复用 M7 workflow 写接口落草稿；`CHAT_SESSION_PROTOCOL_FROZEN=true` | M7 部分（D17）。Daemon HTTP + typed send 已有；Claude Code 编排提案路径已接线（夹具）；Codex 仍 unsupported。**未**真实 Anthropic / headed。**不**宣称对话编排验收完成 |
 | 发布工作流版本 | `/workflows/{id}/drafts/{draftId}:publish` | M7；有限 DAG 校验通过 |
 | 选择绑定工作流或直接执行 | 现有 `:start` 可选 `orchestrationMode` + `GET /capabilities` | M8 planned（D18）。项目详情已挂控件；composed 回传；受管 Run 现写执行快照。Chat `start_direct` **不**走 `:start` 冒充成功；Run 只许 `POST /tasks/{id}/runs`。**不**宣称 M8 完成 |
 

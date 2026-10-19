@@ -598,3 +598,10 @@ updated: 2026-10-19
 - **测试债根因与修法：** 品牌 `W`→`A`；侧栏补 `role-library`；catalog 发布须带已发布 `workerVersionId`；authoring `content_ref` 前缀改为 `transient:authoring:message:`；plan digest 按实际生成计划计算；m3-path 在 bind 前写入 pass evaluation；smoke 写入 `workspace-grants.json` 镜像 Electron Main。
 - **文档：** [实现进度](03-implementation-status.md)、[D18](decision-register.md#d18--双执行模式绑定工作流与直接执行)、[能力矩阵](api-capability-matrix.md)。
 - **状态：** 相关定向测试已绿；**未** Chat「去做」真窗、**未** Claude Code ad-hoc 真跑、composition 仍不自动写 T08→evaluations。
+
+## 2026-10-19（Asia/Taipei）整包 C：画布 + 对话生成编排
+
+- **决定 / 范围：** 在 A/B 稳定后做 M7 切片：画布保存/刷新/发布/未发布不可执行的 API 闭环；Claude Code 作为编排 Agent 产出可校验 Proposal（夹具可测）；项目绑已发布 WorkflowVersion 一条龙；更新 03 / 决策登记 / 沟通历史 / 能力矩阵。
+- **落地：** Claude Code `authoring:proposal` → `waiting_input` → `sendInput` → 只读 spawn → 解析 `WORKFORCE_AUTHORING_PROPOSAL`；无栅栏 fail-closed。录制夹具单测。`workflow-canvas-loop.test.ts` 覆盖保存→reload→发布→拒绑草稿→绑已发布→confirm/start。真窗清单：`/workspace/agentflow-canvas-tw-checklist.md`。
+- **诚实边界：** **未** headed Electron；**未**真实 Anthropic 登录验收编排；confirm 写草稿图内容仍可走既有 utterance 解析；不宣称 M7 完成。
+- **状态：** 适配器/API 自动化已接线；产品真窗与真实 Claude Code 编排仍 planned。

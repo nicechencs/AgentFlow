@@ -22,3 +22,12 @@ export type {
   ClaudeCodeResolvedStartContext,
   ResolveClaudeCodeStartContext,
 } from "./start-context.js";
+
+export {
+  AUTHORING_PROPOSAL_MARKER,
+  buildClaudeCodeAuthoringPrompt,
+  buildRecordedAuthoringProposal,
+  extractAssistantTextFromClaudeCodeJsonlLine,
+  parseClaudeCodeAuthoringProposalText,
+  recordedAuthoringSuccessJsonl,
+} from "./authoring-proposal.js";

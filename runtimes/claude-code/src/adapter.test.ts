@@ -16,6 +16,11 @@ import {
   CLAUDE_CODE_ADAPTER_ID,
   createClaudeCodeRuntime,
 } from "./adapter.js";
+import {
+  buildClaudeCodeAuthoringPrompt,
+  buildRecordedAuthoringProposal,
+  recordedAuthoringSuccessJsonl,
+} from "./authoring-proposal.js";
 import { buildClaudeCodeExecArgv } from "./command.js";
 import type { ClaudeCodeResolvedStartContext } from "./start-context.js";
 
@@ -210,8 +215,10 @@ describe("ClaudeCodeRuntimeAdapter", () => {
     ).toMatchObject({
       available: false,
       constraints: {
-        reason: "no_explicit_structured_authoring_proposal_jsonl_item",
-        textInference: false,
+        inputTransport: "waiting_input_then_spawn_stdin",
+        structuredProposal: "parse_assistant_json_fence",
+        liveAnthropic: "untested",
+        reason: "captured Process port is not injected",
       },
     });
   });
@@ -255,7 +262,7 @@ describe("ClaudeCodeRuntimeAdapter", () => {
     expect(processPort.spawned).toHaveLength(0);
   });
 
-  it("fails closed before spawning an authoring run when structured proposal/input transport is unavailable", async () => {
+  it("accepts authoring start in waiting_input without spawning until sendInput", async () => {
     const processPort = new FakeProcessController(() => ({ chunks: [] }));
     let resolved = false;
     const adapter = new ClaudeCodeRuntimeAdapter({
@@ -268,24 +275,110 @@ describe("ClaudeCodeRuntimeAdapter", () => {
       platform: "linux",
     });
 
-    await expect(
-      adapter.start(
-        createStartRunRequest({
-          runtime: { adapterId: CLAUDE_CODE_ADAPTER_ID },
-          snapshotRef: "authoring:proposal",
-        }),
-      ),
-    ).rejects.toMatchObject({
-      code: "unsupported_capability",
-      message: expect.stringContaining("authoring input handoff"),
-      details: {
-        capability: "authoring.proposal",
-        inputTransport: "spawn_stdin_only",
-        structuredProposal: false,
-      },
-    });
+    const handle = await adapter.start(
+      createStartRunRequest({
+        runtime: { adapterId: CLAUDE_CODE_ADAPTER_ID },
+        snapshotRef: "authoring:proposal",
+      }),
+    );
+    expect(await adapter.inspect(handle)).toMatchObject({ status: "waiting_input" });
     expect(resolved).toBe(false);
     expect(processPort.spawned).toHaveLength(0);
+
+    const events: string[] = [];
+    const stream = (async () => {
+      for await (const event of adapter.stream(handle)) {
+        events.push(event.type);
+        if (event.type === "runtime.input.requested") {
+          break;
+        }
+      }
+    })();
+    await stream;
+    expect(events).toContain("runtime.input.requested");
+  });
+
+  it("spawns on authoring sendInput and emits a proposal from recorded fixture JSONL", async () => {
+    const intent = "Create a plan then implement workflow";
+    const processPort = new FakeProcessController((req) => {
+      const stdin = new TextDecoder().decode(req.stdin ?? new Uint8Array());
+      expect(stdin).toContain("WORKFORCE_AUTHORING_PROPOSAL");
+      expect(stdin).toContain(intent);
+      // Placeholder proposal; adapter will parse whatever is in stdout.
+      const proposal = buildRecordedAuthoringProposal({ handleId: "fixture", intent });
+      const jsonl = recordedAuthoringSuccessJsonl(proposal);
+      return {
+        chunks: [{ source: "stdout" as const, chunk: new TextEncoder().encode(jsonl) }],
+        exit: { exitCode: 0, signal: null },
+      };
+    });
+    const adapter = new ClaudeCodeRuntimeAdapter({
+      detect: () => detected(),
+      process: processPort,
+      resolveStart: () => context({ prompt: "should be replaced by authoring prompt" }),
+      platform: "linux",
+    });
+
+    const handle = await adapter.start(
+      createStartRunRequest({
+        runtime: { adapterId: CLAUDE_CODE_ADAPTER_ID },
+        snapshotRef: "authoring:proposal",
+      }),
+    );
+    const receipt = await adapter.sendInput(handle, {
+      operationId: "op_authoring_input",
+      text: intent,
+    });
+    expect(receipt.accepted).toBe(true);
+    expect(processPort.spawned).toHaveLength(1);
+    const stdin = new TextDecoder().decode(processPort.spawned[0]?.stdin ?? new Uint8Array());
+    expect(stdin).toBe(buildClaudeCodeAuthoringPrompt(intent));
+
+    const types: string[] = [];
+    let proposalSummary: string | undefined;
+    for await (const event of adapter.stream(handle)) {
+      types.push(event.type);
+      if (event.type === "runtime.authoring.proposal") {
+        proposalSummary = (event.data as { proposal?: { summary?: string } }).proposal?.summary;
+      }
+      if (event.type === "runtime.completed" || event.type === "runtime.failed") {
+        break;
+      }
+    }
+    expect(types).toContain("runtime.authoring.proposal");
+    expect(types).toContain("runtime.completed");
+    expect(proposalSummary).toBe("Structured authoring proposal");
+    expect(await adapter.inspect(handle)).toMatchObject({ status: "succeeded" });
+  });
+
+  it("fails closed when recorded authoring output has no proposal fence", async () => {
+    const processPort = new FakeProcessController(() => ({
+      chunks: [{ source: "stdout" as const, chunk: new TextEncoder().encode(SUCCESS_JSONL) }],
+      exit: { exitCode: 0, signal: null },
+    }));
+    const adapter = new ClaudeCodeRuntimeAdapter({
+      detect: () => detected(),
+      process: processPort,
+      resolveStart: () => context(),
+      platform: "linux",
+    });
+    const handle = await adapter.start(
+      createStartRunRequest({
+        runtime: { adapterId: CLAUDE_CODE_ADAPTER_ID },
+        snapshotRef: "authoring:proposal",
+      }),
+    );
+    await adapter.sendInput(handle, { operationId: "op_bad", text: "make a workflow" });
+    const types: string[] = [];
+    for await (const event of adapter.stream(handle)) {
+      types.push(event.type);
+      if (event.type === "runtime.failed" || event.type === "runtime.completed") {
+        break;
+      }
+    }
+    expect(types).toContain("runtime.failed");
+    expect(types).not.toContain("runtime.authoring.proposal");
+    expect(await adapter.inspect(handle)).toMatchObject({ status: "failed" });
   });
 
   it("refuses start with validation_failed when the CLI is missing", async () => {
@@ -452,7 +545,10 @@ describe("ClaudeCodeRuntimeAdapter", () => {
   it("rejects event cursor resume and mid-run input", async () => {
     const adapter = new ClaudeCodeRuntimeAdapter({
       detect: () => detected(),
-      process: new FakeProcessController(() => ({ chunks: [] })),
+      process: new FakeProcessController(() => ({
+        chunks: [stdout(SUCCESS_JSONL)],
+        exit: { exitCode: 0, signal: null },
+      })),
       resolveStart: () => context(),
       platform: "linux",
     });
@@ -460,7 +556,13 @@ describe("ClaudeCodeRuntimeAdapter", () => {
     await expect(
       collect(adapter.stream({ handleId: "hdl_1", runId: "run_1" }, { sourceCursor: "x" })),
     ).rejects.toMatchObject({ code: "unsupported_capability" });
-    await expect(adapter.sendInput()).rejects.toMatchObject({ code: "unsupported_capability" });
+    const handle = await adapter.start(startRequest());
+    await expect(
+      adapter.sendInput(handle, { operationId: "op_in", text: "mid-run" }),
+    ).rejects.toMatchObject({
+      code: "unsupported_capability",
+      message: expect.stringContaining("mid-run input"),
+    });
   });
 
   it("reconcile cannot re-attach a missing in-memory session", async () => {

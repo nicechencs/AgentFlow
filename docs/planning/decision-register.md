@@ -446,6 +446,8 @@ D17 从「只在作者页生成工作流」扩成：**全局 Chat → 按句意�
 
 ### D17 — 对话式 Agent 编排工作流
 
+**进度（2026-10-19 整包 C）：** Claude Code 可作为编排 Runtime：`authoring:proposal` 先 `waiting_input`，Host 交接意图后再 spawn，解析 `WORKFORCE_AUTHORING_PROPOSAL` 栅栏；录制夹具可测；**未在真实 Claude Code / Anthropic 登录下验收**。Codex 仍 unsupported。画布 API 闭环测已有，headed 见真窗清单。生成后进画布改→发布的产品完成态仍未宣称。
+
 对话是项目制循环里**生成**可定制工作流的一等作者路径，也是 **V0.1 就要有的全局语言入口**。Chat 自己不是一等业务对象：每句必须按发信人句意落到 WorkerVersion / Team / Workflow / Task / Run / Artifact。认不出再问，**禁止**默成交流工作。它不是 IM，也不是替代画布的第二套 Runtime。
 
 **范围（M7 扩展，必达，完成态尚未实现）：**
@@ -579,7 +581,7 @@ Authoring 契约：对话 turn/raw intent 先由 Application 创建受治理 aut
 - **现状（Host 能选到 Claude Code，2026-10-19；撞号已修）：** 新增适配器 `runtimes/claude-code`。`CLAUDE_CODE_ADAPTER_ID` 必须是 `"claude-code"`（`runtimes/claude-code/src/adapter.ts:38`），与 Host 默认/`GET /runtimes`/预设 Team 一致；**曾误写成 `"codex"`，与 Codex 撞号导致路由表被盖掉、默认启动报未知执行器，已修。** 生产 Daemon Host 默认是 Claude Code（`apps/daemon/src/composition/app-services.ts:340`），由 `RoutingRuntimeAdapter`（`apps/daemon/src/composition/runtime-router.ts:26`）按 Run 的 `runtime.adapterId` 分发，未知 id 报错不回退；预设 Team 运行时是 Claude Code（`apps/desktop/src/renderer/features/teams/model.ts:15`）。Mock 只在测试里显式传 `completeAfterMs` 时使用。
 - **「已落地」条件：** 仅表示 Host 真能按 id 选到 Claude Code，且缺 CLI/未登录 fail-closed。**不**表示真实 Anthropic 登录下任务已可用。
 - **失败要清楚（D18）：** 没安装 `claude` 或没登录时，启动前报中文错误（`apps/daemon/src/composition/claude-code.ts:72`），`coding` 能力显示不可用；不悄悄改用 Mock 或 Codex。
-- **未验证：** 没有在真实 Anthropic 账号登录下跑过真实任务；写文件/跑命令路径与权限模式只有单元测试。Claude Code 的沙箱强度按与 Codex 相同的保守记录处理（`packages/policy/src/enforcement.ts`），未单独实测。
+- **未验证：** 没有在真实 Anthropic 账号登录下跑过真实任务（含编排提案与普通执行）；写文件/跑命令路径与权限模式只有单元测试。编排提案仅有录制 JSONL 夹具证据。Claude Code 的沙箱强度按与 Codex 相同的保守记录处理（`packages/policy/src/enforcement.ts`），未单独实测。
 - **兼容：** Codex 继续保留为可选执行器（id `"codex"`）；`RuntimeProfile` 里 `adapterType` 已含 `claude_code`（见蓝图领域模型），无需改协议名。
 
 ## 11. 交接

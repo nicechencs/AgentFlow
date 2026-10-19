@@ -892,9 +892,15 @@ export class ComposedAppServices implements AppServices {
       const blocker = describeLiveRuntimeBlocker(id);
       return {
         ...base,
-        capabilities: base.capabilities.map((item) =>
-          item.name === "coding" ? { ...item, available: blocker === undefined } : item,
-        ),
+        capabilities: base.capabilities.map((item) => {
+          if (item.name === "coding") {
+            return { ...item, available: blocker === undefined };
+          }
+          if (item.name === "authoring.proposal" && id === CLAUDE_CODE_RUNTIME_ID) {
+            return { ...item, available: blocker === undefined };
+          }
+          return item;
+        }),
       };
     }
     return id === MOCK_RUNTIME_ID ? MOCK_RUNTIME_CAPABILITIES : null;

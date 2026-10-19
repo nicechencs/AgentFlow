@@ -22,11 +22,17 @@ import type {
   RuntimeEvent,
   RuntimeHandle,
   RuntimeHandleRef,
+  RuntimeInput,
   RuntimeStatus,
   RuntimeStatusName,
   ValidationResult,
 } from "@workforce/runtime-spi";
 
+import {
+  buildClaudeCodeAuthoringPrompt,
+  extractAssistantTextFromClaudeCodeJsonlLine,
+  parseClaudeCodeAuthoringProposalText,
+} from "./authoring-proposal.js";
 import { buildClaudeCodeExecArgv } from "./command.js";
 import { detectClaudeCode, type ClaudeCodeDetection } from "./detect.js";
 import { ClaudeCodeJsonlDecoder } from "./jsonl.js";
@@ -50,8 +56,9 @@ export interface ClaudeCodeRuntimeAdapterOptions {
 interface ClaudeCodeSession {
   handle: RuntimeHandle;
   operationId: string;
-  processHandle: ProcessHandle;
-  captured: CapturedProcess;
+  /** Present only after the captured process has been spawned. */
+  processHandle?: ProcessHandle;
+  captured?: CapturedProcess;
   events: RuntimeEvent[];
   status: RuntimeStatusName;
   lastTrustedFactAt?: string;
@@ -62,6 +69,12 @@ interface ClaudeCodeSession {
   waiters: Array<() => void>;
   lastSequence: number;
   stderrObserved: boolean;
+  /** Authoring runs wait for Host sendInput before spawning. */
+  authoring: boolean;
+  pendingAuthoringRequest?: StartRunRequest;
+  authoringLineBuffer: string;
+  authoringAssistantText: string;
+  authoringProposalEmitted: boolean;
 }
 
 export class ClaudeCodeRuntimeAdapter implements RuntimeAdapter {
@@ -135,10 +148,14 @@ export class ClaudeCodeRuntimeAdapter implements RuntimeAdapter {
         {
           name: "authoring.proposal",
           version: "0.1",
-          available: false,
+          available: startReady,
           constraints: {
-            reason: "no_explicit_structured_authoring_proposal_jsonl_item",
-            textInference: false,
+            inputTransport: "waiting_input_then_spawn_stdin",
+            structuredProposal: "parse_assistant_json_fence",
+            liveAnthropic: "untested",
+            ...(startReady
+              ? {}
+              : { reason: this.startBlockReason(detection) }),
           },
         },
       ],
@@ -209,25 +226,11 @@ export class ClaudeCodeRuntimeAdapter implements RuntimeAdapter {
       });
     }
 
-    // The ClaudeCode CLI transport currently has no safe way to receive a
-    // Workforce authoring message after `start` has been accepted: the
-    // Process port only supports one-shot stdin at spawn time, while the
-    // public StartRunRequest deliberately does not carry raw authoring text.
-    // Reject authoring starts before resolving context or spawning a process
-    // instead of accidentally running the ordinary prompt and then failing
-    // the subsequent Host handoff.
+    // Authoring runs must not spawn on start: StartRunRequest never carries
+    // raw intent, and stdin is one-shot at spawn. Accept the handle in
+    // waiting_input, then spawn from sendInput after the Host handoff.
     if (isAuthoringSnapshotRef(request.snapshotRef)) {
-      throw new RuntimeSdkError(
-        "unsupported_capability",
-        "Claude Code authoring input handoff is unsupported by the current process transport",
-        {
-          details: {
-            capability: "authoring.proposal",
-            inputTransport: "spawn_stdin_only",
-            structuredProposal: false,
-          },
-        },
-      );
+      return this.startAuthoringPending(request);
     }
 
     const detection = this.detectFn();
@@ -321,6 +324,10 @@ export class ClaudeCodeRuntimeAdapter implements RuntimeAdapter {
       waiters: [],
       lastSequence: 0,
       stderrObserved: false,
+      authoring: false,
+      authoringLineBuffer: "",
+      authoringAssistantText: "",
+      authoringProposalEmitted: false,
     };
     this.byHandle.set(handle.handleId, session);
     this.byOperation.set(request.operationId, session);
@@ -328,10 +335,29 @@ export class ClaudeCodeRuntimeAdapter implements RuntimeAdapter {
     return handle;
   }
 
-  async sendInput(): Promise<InputReceipt> {
-    throw new RuntimeSdkError("unsupported_capability", "Claude Code mid-run input is untested", {
-      details: { capability: "input" },
-    });
+  async sendInput(handle: RuntimeHandleRef, input: RuntimeInput): Promise<InputReceipt> {
+    const session = this.byHandle.get(handle.handleId);
+    if (!session) {
+      throw new RuntimeSdkError("not_found", "runtime handle not found", {
+        details: { handleId: handle.handleId },
+      });
+    }
+    if (!session.authoring || session.pendingAuthoringRequest === undefined) {
+      throw new RuntimeSdkError("unsupported_capability", "Claude Code mid-run input is untested", {
+        details: { capability: "input" },
+      });
+    }
+    if (session.status !== "waiting_input" || session.cancelRequested || session.closed) {
+      return { operationId: input.operationId, accepted: false };
+    }
+    const intent = typeof input.text === "string" ? input.text : "";
+    if (intent.trim().length === 0) {
+      throw new RuntimeSdkError("validation_failed", "authoring intent text is required", {
+        details: { capability: "authoring.proposal" },
+      });
+    }
+    await this.spawnAuthoringSession(session, intent);
+    return { operationId: input.operationId, accepted: true };
   }
 
   async pause(): Promise<OperationReceipt> {
@@ -365,7 +391,14 @@ export class ClaudeCodeRuntimeAdapter implements RuntimeAdapter {
     }
     if (!session.cancelRequested && !isTerminalStatus(session.status)) {
       session.cancelRequested = true;
-      await this.process.cancel(session.processHandle, "force");
+      if (session.processHandle !== undefined) {
+        await this.process.cancel(session.processHandle, "force");
+      } else {
+        session.status = "cancelled";
+        this.emitLocal(session, "runtime.cancelled", { reason: "cancelled_before_spawn" });
+        session.closed = true;
+        this.notify(session);
+      }
     }
     return { operationId: `cancel:${handle.handleId}`, accepted: true };
   }
@@ -375,7 +408,7 @@ export class ClaudeCodeRuntimeAdapter implements RuntimeAdapter {
     if (!session) {
       return { handle, status: "unknown" };
     }
-    if (!isTerminalStatus(session.status) && this.process) {
+    if (!isTerminalStatus(session.status) && this.process && session.processHandle) {
       try {
         const live = await this.process.inspect(session.processHandle);
         if (!live.alive && !isTerminalStatus(session.status) && !session.cancelRequested) {
@@ -489,6 +522,16 @@ export class ClaudeCodeRuntimeAdapter implements RuntimeAdapter {
   }
 
   private async consume(session: ClaudeCodeSession): Promise<void> {
+    if (session.captured === undefined) {
+      session.status = "failed";
+      this.emitLocal(session, "runtime.failed", {
+        reason: "claude_code_missing_captured_process",
+        contentRedacted: true,
+      });
+      session.closed = true;
+      this.notify(session);
+      return;
+    }
     try {
       for await (const item of session.captured.output) {
         if (item.source === "stderr") {
@@ -504,12 +547,25 @@ export class ClaudeCodeRuntimeAdapter implements RuntimeAdapter {
         }
         const text = session.textDecoder.decode(item.chunk, { stream: true });
         if (text.length > 0) {
+          if (session.authoring) {
+            this.accumulateAuthoringAssistantText(session, text);
+          }
           this.applyDecoded(session, session.decoder.push(text));
         }
       }
       const tail = session.textDecoder.decode();
       if (tail.length > 0) {
+        if (session.authoring) {
+          this.accumulateAuthoringAssistantText(session, tail);
+        }
         this.applyDecoded(session, session.decoder.push(tail));
+      }
+      if (session.authoring && session.authoringLineBuffer.length > 0) {
+        const text = extractAssistantTextFromClaudeCodeJsonlLine(session.authoringLineBuffer);
+        session.authoringLineBuffer = "";
+        if (text.length > 0) {
+          session.authoringAssistantText += text;
+        }
       }
       this.applyDecoded(session, session.decoder.flush());
     } catch (error) {
@@ -525,7 +581,7 @@ export class ClaudeCodeRuntimeAdapter implements RuntimeAdapter {
 
     let exit: { exitCode: number | null; signal: string | null } | undefined;
     try {
-      exit = await session.captured.wait();
+      exit = session.captured ? await session.captured.wait() : undefined;
     } catch {
       exit = undefined;
     }
@@ -563,6 +619,24 @@ export class ClaudeCodeRuntimeAdapter implements RuntimeAdapter {
 
   private applyDecoded(session: ClaudeCodeSession, events: RuntimeEvent[]): void {
     for (const event of events) {
+      if (
+        session.authoring &&
+        event.type === "runtime.completed" &&
+        !session.authoringProposalEmitted
+      ) {
+        const proposal = parseClaudeCodeAuthoringProposalText(session.authoringAssistantText);
+        if (!proposal) {
+          this.emitLocal(session, "runtime.failed", {
+            reason: "invalid_authoring_proposal",
+            contentRedacted: true,
+          });
+          session.status = "failed";
+          this.notify(session);
+          continue;
+        }
+        session.authoringProposalEmitted = true;
+        this.emitLocal(session, "runtime.authoring.proposal", { proposal });
+      }
       session.events.push(event);
       session.lastTrustedFactAt = event.time;
       const sequence = event.data["adapterSequence"];
@@ -616,6 +690,136 @@ export class ClaudeCodeRuntimeAdapter implements RuntimeAdapter {
     const waiters = session.waiters.splice(0);
     for (const waiter of waiters) {
       waiter();
+    }
+  }
+
+  private startAuthoringPending(request: StartRunRequest): RuntimeHandle {
+    const detection = this.detectFn();
+    if (!this.canAttemptStart(detection)) {
+      throw new RuntimeSdkError(
+        "unsupported_capability",
+        "Claude Code authoring start requires detect, Process, and resolveStart",
+        {
+          details: {
+            capability: "authoring.proposal",
+            reason: this.startBlockReason(detection),
+          },
+        },
+      );
+    }
+    const createdAt = this.clock.now().toISOString();
+    const handle: RuntimeHandle = {
+      handleId: this.ids.ulid("hdl_"),
+      runId: this.ids.ulid("run_"),
+      adapterId: CLAUDE_CODE_ADAPTER_ID,
+      createdAt,
+    };
+    const session: ClaudeCodeSession = {
+      handle,
+      operationId: request.operationId,
+      events: [],
+      status: "starting",
+      lastTrustedFactAt: createdAt,
+      closed: false,
+      cancelRequested: false,
+      decoder: new ClaudeCodeJsonlDecoder({ now: () => this.clock.now() }),
+      textDecoder: new TextDecoder("utf-8"),
+      waiters: [],
+      lastSequence: 0,
+      stderrObserved: false,
+      authoring: true,
+      pendingAuthoringRequest: request,
+      authoringLineBuffer: "",
+      authoringAssistantText: "",
+      authoringProposalEmitted: false,
+    };
+    this.byHandle.set(handle.handleId, session);
+    this.byOperation.set(request.operationId, session);
+    this.emitLocal(session, "runtime.starting", {});
+    session.status = "waiting_input";
+    this.emitLocal(session, "runtime.input.requested", { kind: "text" });
+    return handle;
+  }
+
+  private async spawnAuthoringSession(session: ClaudeCodeSession, intent: string): Promise<void> {
+    const request = session.pendingAuthoringRequest;
+    if (request === undefined) {
+      throw new RuntimeSdkError("conflict", "authoring session is not waiting for input", {
+        details: { handleId: session.handle.handleId },
+      });
+    }
+    if (this.process === undefined || this.resolveStart === undefined) {
+      throw new RuntimeSdkError(
+        "unsupported_capability",
+        "Claude Code authoring spawn requires Process and resolveStart",
+        { details: { capability: "authoring.proposal" } },
+      );
+    }
+    const detection = this.detectFn();
+    if (!detection.found || detection.executable === undefined) {
+      throw new RuntimeSdkError("validation_failed", "ClaudeCode CLI was not detected", {
+        details: { capability: "detect", runtime: CLAUDE_CODE_ADAPTER_ID },
+      });
+    }
+    const resolved = parseClaudeCodeResolvedStartContext(await this.resolveStart(request));
+    if (resolved === undefined) {
+      throw new RuntimeSdkError(
+        "unsupported_capability",
+        "Claude Code authoring requires a complete resolved Workspace/Policy/context",
+        { details: { capability: "authoring.proposal" } },
+      );
+    }
+    const prompt = buildClaudeCodeAuthoringPrompt(intent);
+    const argv = buildClaudeCodeExecArgv({
+      executable: detection.executable,
+      cwd: resolved.cwd,
+      sandbox: "read-only",
+      approval: "never",
+    });
+    const stdin = new TextEncoder().encode(prompt);
+    const spawnRequest = {
+      argv,
+      cwd: resolved.cwd,
+      stdin,
+      ...(resolved.environment ? { env: resolved.environment } : {}),
+    };
+    let captured: CapturedProcess;
+    try {
+      captured = await this.process.spawnCaptured(spawnRequest);
+    } catch (error) {
+      if (isUnsupportedCapability(error)) {
+        throw new RuntimeSdkError(
+          "unsupported_capability",
+          error instanceof Error ? error.message : "captured Process spawn is unsupported",
+          { details: { capability: "process.capture", runtime: CLAUDE_CODE_ADAPTER_ID } },
+        );
+      }
+      throw error;
+    }
+    session.pendingAuthoringRequest = undefined;
+    session.processHandle = captured.handle;
+    session.captured = captured;
+    session.handle = {
+      ...session.handle,
+      process: {
+        pid: captured.handle.pid,
+        startIdentity: captured.handle.startIdentity,
+      },
+    };
+    session.status = "running";
+    this.emitLocal(session, "runtime.started", { resumedFrom: "waiting_input" });
+    void this.consume(session);
+  }
+
+  private accumulateAuthoringAssistantText(session: ClaudeCodeSession, chunk: string): void {
+    session.authoringLineBuffer += chunk;
+    const lines = session.authoringLineBuffer.split("\n");
+    session.authoringLineBuffer = lines.pop() ?? "";
+    for (const line of lines) {
+      const text = extractAssistantTextFromClaudeCodeJsonlLine(line);
+      if (text.length > 0) {
+        session.authoringAssistantText += text;
+      }
     }
   }
 }
